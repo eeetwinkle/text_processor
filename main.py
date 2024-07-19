@@ -104,3 +104,5 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     tp = TextProcessor()
     sys.exit(app.exec_())
+
+# что-то добавила
