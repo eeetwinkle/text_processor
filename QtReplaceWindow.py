@@ -1,0 +1,72 @@
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+
+class Ui_QtReplaceWindow(object):
+    def setupUi(self, QtReplaceWindow):
+        QtReplaceWindow.setObjectName("QtReplaceWindow")
+        QtReplaceWindow.resize(500, 200)
+        self.pushButton_replace = QtWidgets.QPushButton(QtReplaceWindow)
+        self.pushButton_replace.setGeometry(QtCore.QRect(390, 160, 93, 28))
+        self.pushButton_replace.setObjectName("pushButton_replace")
+        self.widget = QtWidgets.QWidget(QtReplaceWindow)
+        self.widget.setGeometry(QtCore.QRect(20, 90, 162, 72))
+        self.widget.setObjectName("widget")
+        self.verticalLayout = QtWidgets.QVBoxLayout(self.widget)
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.label_2 = QtWidgets.QLabel(self.widget)
+        self.label_2.setObjectName("label_2")
+        self.verticalLayout.addWidget(self.label_2)
+        self.checkBox_register = QtWidgets.QCheckBox(self.widget)
+        self.checkBox_register.setObjectName("checkBox_register")
+        self.verticalLayout.addWidget(self.checkBox_register)
+        self.checkBox_entirely = QtWidgets.QCheckBox(self.widget)
+        self.checkBox_entirely.setObjectName("checkBox_entirely")
+        self.verticalLayout.addWidget(self.checkBox_entirely)
+        self.widget1 = QtWidgets.QWidget(QtReplaceWindow)
+        self.widget1.setGeometry(QtCore.QRect(20, 20, 461, 57))
+        self.widget1.setObjectName("widget1")
+        self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.widget1)
+        self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.label = QtWidgets.QLabel(self.widget1)
+        self.label.setObjectName("label")
+        self.horizontalLayout.addWidget(self.label)
+        self.lineEdit_search2 = QtWidgets.QLineEdit(self.widget1)
+        self.lineEdit_search2.setObjectName("lineEdit_search2")
+        self.horizontalLayout.addWidget(self.lineEdit_search2)
+        self.verticalLayout_2.addLayout(self.horizontalLayout)
+        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.label_3 = QtWidgets.QLabel(self.widget1)
+        self.label_3.setObjectName("label_3")
+        self.horizontalLayout_2.addWidget(self.label_3)
+        self.lineEdit_replace = QtWidgets.QLineEdit(self.widget1)
+        self.lineEdit_replace.setObjectName("lineEdit_replace")
+        self.horizontalLayout_2.addWidget(self.lineEdit_replace)
+        self.verticalLayout_2.addLayout(self.horizontalLayout_2)
+
+        self.retranslateUi(QtReplaceWindow)
+        QtCore.QMetaObject.connectSlotsByName(QtReplaceWindow)
+
+    def retranslateUi(self, QtReplaceWindow):
+        _translate = QtCore.QCoreApplication.translate
+        QtReplaceWindow.setWindowTitle(_translate("QtReplaceWindow", "Form"))
+        self.pushButton_replace.setText(_translate("QtReplaceWindow", "Заменить"))
+        self.label_2.setText(_translate("QtReplaceWindow", "Параметры поиска:"))
+        self.checkBox_register.setText(_translate("QtReplaceWindow", "Учитывать регистр"))
+        self.checkBox_entirely.setText(_translate("QtReplaceWindow", "Только слово целиком"))
+        self.label.setText(_translate("QtReplaceWindow", "Найти:"))
+        self.label_3.setText(_translate("QtReplaceWindow", "Заменить на:"))
+
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    QtReplaceWindow = QtWidgets.QWidget()
+    ui = Ui_QtReplaceWindow()
+    ui.setupUi(QtReplaceWindow)
+    QtReplaceWindow.show()
+    sys.exit(app.exec_())
