@@ -1,108 +1,48 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QAction, QFileDialog, QColorDialog, QInputDialog
-from PyQt5.QtGui import QFont, QColor, QTextCursor, QImage, QTextImageFormat
+from PyQt5 import QtWidgets
+from QtMainWindow import Ui_color
+from QtSearchWindow import Ui_QtSearchWindow
+from QtReplaceWindow import Ui_QtReplaceWindow
+from QtStyles import Ui_Form
 
-
-class TextProcessor(QMainWindow):
+class MainWindow(QtWidgets.QMainWindow, Ui_color):
     def __init__(self):
         super().__init__()
+        self.setupUi(self)
+        self.search_window = SearchWindow()
+        self.replace_window = ReplaceWindow()
+        self.style_window = StyleWindow()
+        self.search.clicked.connect(self.open_search_window)
+        self.replace.clicked.connect(self.open_replace_window)
+        self.style.clicked.connect(self.open_style_window)
 
-        self.initUI()
+    def open_search_window(self):
+        self.search_window.show()
 
-    def initUI(self):
-        self.textEdit = QTextEdit()
-        self.setCentralWidget(self.textEdit)
+    def open_replace_window(self):
+        self.replace_window.show()
 
-        boldAction = QAction('Bold', self)
-        boldAction.triggered.connect(self.boldText)
+    def open_style_window(self):
+        self.style_window.show()
 
-        italicAction = QAction('Italic', self)
-        italicAction.triggered.connect(self.italicText)
+class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
 
-        underlineAction = QAction('Underline', self)
-        underlineAction.triggered.connect(self.underlineText)
+class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
 
-        fontAction = QAction('Change Font', self)
-        fontAction.triggered.connect(self.changeFont)
-
-        colorAction = QAction('Change Text Color', self)
-        colorAction.triggered.connect(self.changeColor)
-
-        imageAction = QAction('Insert Image', self)
-        imageAction.triggered.connect(self.insertImage)
-
-        saveAction = QAction('Save', self)
-        saveAction.triggered.connect(self.saveFile)
-
-        self.toolbar = self.addToolBar('Formatting')
-        self.toolbar.addAction(boldAction)
-        self.toolbar.addAction(italicAction)
-        self.toolbar.addAction(underlineAction)
-        self.toolbar.addAction(fontAction)
-        self.toolbar.addAction(colorAction)
-        self.toolbar.addAction(imageAction)
-        self.toolbar.addAction(saveAction)
-
-        self.setWindowTitle('Text Processor')
-        self.show()
-
-    def boldText(self):
-        boldFont = self.textEdit.font()
-        boldFont.setBold(True)
-        self.textEdit.setFont(boldFont)
-
-    def italicText(self):
-        italicFont = self.textEdit.font()
-        italicFont.setItalic(True)
-        self.textEdit.setFont(italicFont)
-
-    def underlineText(self):
-        underlinedFont = self.textEdit.font()
-        underlinedFont.setUnderline(True)
-        self.textEdit.setFont(underlinedFont)
-
-    def changeFont(self):
-        font, ok = QFont.getFont()
-        if ok:
-            self.textEdit.setFont(font)
-
-    def changeColor(self):
-        color = QColorDialog.getColor()
-        if color.isValid():
-            self.textEdit.setTextColor(color)
-
-    def insertImage(self):
-        fileName, _ = QFileDialog.getOpenFileName(self, "Insert Image", "", "Images (*.png *.jpg *.jpeg)")
-        if fileName:
-            image = QImage(fileName)
-            cursor = self.textEdit.textCursor()
-            imageFormat = QTextImageFormat()
-            imageFormat.setWidth(image.width())
-            imageFormat.setHeight(image.height())
-            imageFormat.setName(fileName)
-            cursor.insertImage(imageFormat)
-
-            # Ask user for image width and height
-            width, ok = QInputDialog.getInt(self, "Image Width", "Enter image width:")
-            if ok:
-                imageFormat.setWidth(width)
-            height, ok = QInputDialog.getInt(self, "Image Height", "Enter image height:")
-            if ok:
-                imageFormat.setHeight(height)
-
-            cursor.insertImage(imageFormat)
-
-    def saveFile(self):
-        fileName, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Text Files (*.txt)")
-        if fileName:
-            with open(fileName, 'w') as file:
-                text = self.textEdit.toPlainText()
-                file.write(text)
+class StyleWindow(QtWidgets.QWidget, Ui_Form):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
 
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    tp = TextProcessor()
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    main_window = MainWindow()
+    main_window.show()
     sys.exit(app.exec_())
-
-# что-то добавила
