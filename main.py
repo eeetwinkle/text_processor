@@ -1,6 +1,5 @@
 import sys
 import re
-
 from PyQt5 import QtWidgets, QtGui, QtCore
 from QtMainWindow import Ui_color
 from QtSearchWindow import Ui_QtSearchWindow
@@ -8,7 +7,9 @@ from QtReplaceWindow import Ui_QtReplaceWindow
 from QtStyles import Ui_Form
 from QtNewStyle import Ui_QtNewStyleWindow
 from PyQt5.QtGui import QTextCursor, QTextBlockFormat
-from PyQt5.QtWidgets import QColorDialog
+from PyQt5.QtWidgets import QColorDialog, QFileDialog
+from docx import Document
+from docx.shared import Pt, RGBColor
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_color):
@@ -22,6 +23,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.replace.clicked.connect(self.open_replace_window)
         self.style.clicked.connect(self.open_style_window)
         self.text_color.clicked.connect(self.change_text_color)
+        self.save.clicked.connect(self.save_as_docx)  # Добавлено
 
         self.bold_active = False
         self.italic_active = False
@@ -102,6 +104,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.underlined.setStyleSheet(
             'background-color: lightblue' if self.underlined_active else 'background-color: none')
         self.apply_font_underlined(self.underlined_active)
+
     def apply_font_bold(self, enabled):
         cursor = self.text_edit.textCursor()
         if cursor.hasSelection():
@@ -158,6 +161,33 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
             self.text_color.setStyleSheet(
                 f'background-color: {color.name()}' if color != QtGui.QColor('black') else 'background-color: none')
 
+    def save_as_docx(self):
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Word Documents (*.docx)")
+        if file_path:
+            doc = Document()
+            cursor = self.text_edit.textCursor()
+            cursor.select(QTextCursor.Document)
+            text = cursor.selection().toPlainText()
+
+            paragraphs = text.split('\n')
+            for para in paragraphs:
+                if para.strip():
+                    p = doc.add_paragraph()
+                    run = p.add_run(para)
+                    format = cursor.charFormat()
+
+                    font = run.font
+                    font.name = format.fontFamily()
+                    font.size = Pt(format.fontPointSize())
+                    font.bold = format.fontWeight() == QtGui.QFont.Bold
+                    font.italic = format.fontItalic()
+                    font.underline = format.fontUnderline()
+
+                    color = format.foreground().color()
+                    font.color.rgb = RGBColor(color.red(), color.green(), color.blue())
+
+            doc.save(file_path)
+
     def open_search_window(self):
         self.search_window.show()
 
@@ -176,7 +206,6 @@ class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
         self.pushButton_search.clicked.connect(self.perform_search)
 
     def perform_search(self):
-        """Метод, выполняющий поиск по тексту."""
         search_text = self.lineEdit_search.text()
         if self.checkBox_register.isChecked():
             flags = 0
@@ -196,7 +225,7 @@ class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
         else:
             cursor = self.text_edit.textCursor()
             cursor.setPosition(found.start())
-            cursor.setPosition(found.end(), cursor.KeepAnchor)  # Выделяем текст
+            cursor.setPosition(found.end(), cursor.KeepAnchor)
             self.text_edit.setTextCursor(cursor)
             self.text_edit.setFocus()
             print(f"Найдено: {search_text}")
