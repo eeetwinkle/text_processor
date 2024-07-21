@@ -100,7 +100,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.underlined.setStyleSheet(
             'background-color: lightblue' if self.underlined_active else 'background-color: none')
         self.apply_font_underlined(self.underlined_active)
-
     def apply_font_bold(self, enabled):
         cursor = self.text_edit.textCursor()
         if cursor.hasSelection():
