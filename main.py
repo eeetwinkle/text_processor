@@ -5,6 +5,8 @@ from QtSearchWindow import Ui_QtSearchWindow
 from QtReplaceWindow import Ui_QtReplaceWindow
 from QtStyles import Ui_Form
 from QtNewStyle import Ui_QtNewStyleWindow
+from PyQt5.QtGui import QTextCursor, QTextBlockFormat
+
 
 class MainWindow(QtWidgets.QMainWindow, Ui_color):
     def __init__(self):
@@ -31,6 +33,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.italic_active = False
         self.underlined_active = False
 
+        self.indent_value = 0
+        self.reduce_indentation.clicked.connect(self.update_indent)
+        self.increase_indentation.clicked.connect(self.update_indent)
+    def update_indent(self):
+        sender = self.sender()
+        if sender == self.increase_indentation:
+            self.indent_value += 1
+        elif self.indent_value > 0:
+            self.indent_value -= 1
+        block_format = QTextBlockFormat()
+        block_format.setIndent(self.indent_value)
+        cursor = self.text_edit.textCursor()
+        cursor.select(QTextCursor.Document)
+        cursor.mergeBlockFormat(block_format)
+        self.text_edit.setTextCursor(cursor)
     def update_font(self, font=None):
         if font is None:
             font = self.font.currentFont()
@@ -138,3 +155,5 @@ if __name__ == "__main__":
     main_window = MainWindow()
     main_window.show()
     sys.exit(app.exec_())
+
+
