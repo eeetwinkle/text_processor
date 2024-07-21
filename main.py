@@ -36,6 +36,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.indent_value = 0
         self.reduce_indentation.clicked.connect(self.update_indent)
         self.increase_indentation.clicked.connect(self.update_indent)
+
+        self.size_interval.currentTextChanged.connect(self.change_line_spacing)
+
+    # Меняет межстрочный интервал в текстовом редакторе.
+    def change_line_spacing(self):
+        value = float(self.size_interval.currentText())
+        cursor = self.text_edit.textCursor()
+        cursor.select(QTextCursor.Document)
+
+        # Получаем формат блока текста
+        block_format = QTextBlockFormat()
+        block_format.setLineHeight(value*10, QTextBlockFormat.LineHeightTypes.FixedHeight)  # установка фиксированного
+        # межстрочного интервала
+
+        # Применяем формат к выделенному тексту
+        cursor.mergeBlockFormat(block_format)
+
+        # Обновляем текст для применения нового межстрочного интервала
+        self.text_edit.setTextCursor(cursor)
     def update_indent(self):
         sender = self.sender()
         if sender == self.increase_indentation:
