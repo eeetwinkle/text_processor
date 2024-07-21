@@ -195,7 +195,7 @@ class Ui_color(object):
         self.horizontalLayout_6.addWidget(self.pages)
         self.verticalLayout_4.addLayout(self.horizontalLayout_6)
         self.text_edit = QtWidgets.QTextEdit(self.layoutWidget)
-        self.text_edit.setObjectName("text_edit")
+        self.text_edit.setObjectName("text_edit_main")
         self.verticalLayout_4.addWidget(self.text_edit)
         color.setCentralWidget(self.centralwidget)
 
