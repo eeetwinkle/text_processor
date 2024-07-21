@@ -29,14 +29,26 @@ class Ui_Form(object):
         self.save.setMinimumSize(QtCore.QSize(87, 32))
         self.save.setText("")
         self.save.setObjectName("save")
+        icon3 = QtGui.QIcon()
+        icon3.addPixmap(QtGui.QPixmap("Practice/text_processor/image/Aa.png"), QtGui.QIcon.Normal,
+                        QtGui.QIcon.Off)
+        self.save.setIcon(icon3)
         self.gridLayout_2.addWidget(self.save, 3, 0, 1, 1)
         self.clean = QtWidgets.QPushButton(self.gridLayoutWidget_2)
         self.clean.setText("")
         self.clean.setObjectName("clean")
+        icon2 = QtGui.QIcon()
+        icon2.addPixmap(QtGui.QPixmap("Practice/text_processor/image/clean.png"), QtGui.QIcon.Normal,
+                        QtGui.QIcon.Off)
+        self.clean.setIcon(icon2)
         self.gridLayout_2.addWidget(self.clean, 2, 0, 1, 1)
         self.new_style = QtWidgets.QPushButton(self.gridLayoutWidget_2)
         self.new_style.setText("")
         self.new_style.setObjectName("new_style")
+        icon1 = QtGui.QIcon()
+        icon1.addPixmap(QtGui.QPixmap("Practice/text_processor/image/add.png"), QtGui.QIcon.Normal,
+                        QtGui.QIcon.Off)
+        self.new_style.setIcon(icon1)
         self.gridLayout_2.addWidget(self.new_style, 0, 0, 1, 1)
         self.label_2 = QtWidgets.QLabel(self.gridLayoutWidget_2)
         self.label_2.setObjectName("label_2")
@@ -187,7 +199,7 @@ class Ui_Form(object):
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Form"))
+        Form.setWindowTitle(_translate("Form", "Style"))
         self.right.setText(_translate("Form", ">"))
         self.left.setText(_translate("Form", "<"))
         self.label.setText(_translate("Form", "Создать стиль"))
