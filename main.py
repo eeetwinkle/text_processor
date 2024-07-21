@@ -4,7 +4,7 @@ from QtMainWindow import Ui_color
 from QtSearchWindow import Ui_QtSearchWindow
 from QtReplaceWindow import Ui_QtReplaceWindow
 from QtStyles import Ui_Form
-
+from QtNewStyle import Ui_QtNewStyleWindow
 class MainWindow(QtWidgets.QMainWindow, Ui_color):
     def __init__(self):
         super().__init__()
@@ -36,6 +36,16 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
         self.setupUi(self)
 
 class StyleWindow(QtWidgets.QWidget, Ui_Form):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
+        self.new_style_window = NewStyleWindow()
+        self.new_style.clicked.connect(self.open_new_style_window)
+
+    def open_new_style_window(self):
+        self.new_style_window.show()
+class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)

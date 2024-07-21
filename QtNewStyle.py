@@ -1,11 +1,11 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-class Ui_color(object):
-    def setupUi(self, color):
-        color.setObjectName("color")
-        color.resize(690, 747)
-        self.centralwidget = QtWidgets.QWidget(color)
+class Ui_QtNewStyleWindow(object):
+    def setupUi(self, QtNewStyleWindow):
+        QtNewStyleWindow.setObjectName("QtNewStyleWindow")
+        QtNewStyleWindow.resize(690, 747)
+        self.centralwidget = QtWidgets.QWidget(QtNewStyleWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.layoutWidget = QtWidgets.QWidget(self.centralwidget)
         self.layoutWidget.setGeometry(QtCore.QRect(10, 10, 661, 681))
@@ -173,14 +173,13 @@ class Ui_color(object):
         self.esc = QtWidgets.QPushButton(self.centralwidget)
         self.esc.setGeometry(QtCore.QRect(10, 700, 113, 32))
         self.esc.setObjectName("esc")
-        color.setCentralWidget(self.centralwidget)
 
-        self.retranslateUi(color)
-        QtCore.QMetaObject.connectSlotsByName(color)
+        self.retranslateUi(QtNewStyleWindow)
+        QtCore.QMetaObject.connectSlotsByName(QtNewStyleWindow)
 
-    def retranslateUi(self, color):
+    def retranslateUi(self, QtNewStyleWindow):
         _translate = QtCore.QCoreApplication.translate
-        color.setWindowTitle(_translate("color", "New Style"))
+        QtNewStyleWindow.setWindowTitle(_translate("color", "MainWindow"))
         self.label.setText(_translate("color", "Имя"))
         self.comboBo.setItemText(0, _translate("color", "8"))
         self.comboBo.setItemText(1, _translate("color", "9"))
@@ -207,12 +206,11 @@ class Ui_color(object):
         self.save.setText(_translate("color", "Сохранить"))
         self.esc.setText(_translate("color", "Отмена"))
 
-
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
-    color = QtWidgets.QMainWindow()
-    ui = Ui_color()
-    ui.setupUi(color)
-    color.show()
+    QtNewStyleWindow = QtWidgets.QWidget()
+    ui = Ui_QtNewStyleWindow()
+    ui.setupUi(QtNewStyleWindow)
+    QtNewStyleWindow.show()
     sys.exit(app.exec_())
