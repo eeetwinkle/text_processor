@@ -180,7 +180,7 @@ class Ui_color(object):
 
     def retranslateUi(self, color):
         _translate = QtCore.QCoreApplication.translate
-        color.setWindowTitle(_translate("color", "MainWindow"))
+        color.setWindowTitle(_translate("color", "New Style"))
         self.label.setText(_translate("color", "Имя"))
         self.comboBo.setItemText(0, _translate("color", "8"))
         self.comboBo.setItemText(1, _translate("color", "9"))
