@@ -23,7 +23,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.replace.clicked.connect(self.open_replace_window)
         self.style.clicked.connect(self.open_style_window)
         self.text_color.clicked.connect(self.change_text_color)
-        self.save.clicked.connect(self.save_as_docx)  # Добавлено
+        self.save.clicked.connect(self.save_as_docx)
 
         self.bold_active = False
         self.italic_active = False
@@ -66,77 +66,52 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.apply_font_size(size)
 
     def apply_font(self, font):
-        cursor = self.text_edit.textCursor()
-        if cursor.hasSelection():
-            format = cursor.charFormat()
-            format.setFontFamily(font.family())
-            cursor.setCharFormat(format)
-        else:
-            current_format = self.text_edit.currentCharFormat()
-            current_format.setFontFamily(font.family())
-            self.text_edit.setCurrentCharFormat(current_format)
-        self.update_current_format()
+        format = QtGui.QTextCharFormat()
+        format.setFontFamily(font.family())
+        self.merge_format_on_word_or_selection(format)
 
     def apply_font_size(self, size):
-        cursor = self.text_edit.textCursor()
-        if cursor.hasSelection():
-            format = cursor.charFormat()
-            format.setFontPointSize(size)
-            cursor.setCharFormat(format)
-        else:
-            current_format = self.text_edit.currentCharFormat()
-            current_format.setFontPointSize(size)
-            self.text_edit.setCurrentCharFormat(current_format)
-        self.update_current_format()
+        format = QtGui.QTextCharFormat()
+        format.setFontPointSize(size)
+        self.merge_format_on_word_or_selection(format)
 
     def toggle_bold(self):
         self.bold_active = not self.bold_active
         self.bold.setStyleSheet('background-color: lightblue' if self.bold_active else 'background-color: none')
-        self.apply_font_bold(self.bold_active)
+        format = QtGui.QTextCharFormat()
+        format.setFontWeight(QtGui.QFont.Bold if self.bold_active else QtGui.QFont.Normal)
+        self.merge_format_on_word_or_selection(format)
 
     def toggle_italic(self):
         self.italic_active = not self.italic_active
         self.italic.setStyleSheet('background-color: lightblue' if self.italic_active else 'background-color: none')
-        self.apply_font_italic(self.italic_active)
+        format = QtGui.QTextCharFormat()
+        format.setFontItalic(self.italic_active)
+        self.merge_format_on_word_or_selection(format)
 
     def toggle_underlined(self):
         self.underlined_active = not self.underlined_active
         self.underlined.setStyleSheet(
             'background-color: lightblue' if self.underlined_active else 'background-color: none')
-        self.apply_font_underlined(self.underlined_active)
+        format = QtGui.QTextCharFormat()
+        format.setFontUnderline(self.underlined_active)
+        self.merge_format_on_word_or_selection(format)
 
-    def apply_font_bold(self, enabled):
-        cursor = self.text_edit.textCursor()
-        if cursor.hasSelection():
-            format = cursor.charFormat()
-            format.setFontWeight(QtGui.QFont.Bold if enabled else QtGui.QFont.Normal)
-            cursor.setCharFormat(format)
-        else:
-            current_format = self.text_edit.currentCharFormat()
-            current_format.setFontWeight(QtGui.QFont.Bold if enabled else QtGui.QFont.Normal)
-            self.text_edit.setCurrentCharFormat(current_format)
+    def change_text_color(self):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            format = QtGui.QTextCharFormat()
+            format.setForeground(color)
+            self.merge_format_on_word_or_selection(format)
+            self.text_color.setStyleSheet(
+                f'background-color: {color.name()}' if color != QtGui.QColor('black') else 'background-color: none')
 
-    def apply_font_italic(self, enabled):
+    def merge_format_on_word_or_selection(self, format):
         cursor = self.text_edit.textCursor()
-        if cursor.hasSelection():
-            format = cursor.charFormat()
-            format.setFontItalic(enabled)
-            cursor.setCharFormat(format)
-        else:
-            current_format = self.text_edit.currentCharFormat()
-            current_format.setFontItalic(enabled)
-            self.text_edit.setCurrentCharFormat(current_format)
-
-    def apply_font_underlined(self, enabled):
-        cursor = self.text_edit.textCursor()
-        if cursor.hasSelection():
-            format = cursor.charFormat()
-            format.setFontUnderline(enabled)
-            cursor.setCharFormat(format)
-        else:
-            current_format = self.text_edit.currentCharFormat()
-            current_format.setFontUnderline(enabled)
-            self.text_edit.setCurrentCharFormat(current_format)
+        if not cursor.hasSelection():
+            cursor.select(QTextCursor.WordUnderCursor)
+        cursor.mergeCharFormat(format)
+        self.text_edit.mergeCurrentCharFormat(format)
 
     def update_current_format(self):
         format = self.text_edit.currentCharFormat()
@@ -144,22 +119,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         format.setFontItalic(self.italic_active)
         format.setFontUnderline(self.underlined_active)
         self.text_edit.setCurrentCharFormat(format)
-
-    def change_text_color(self):
-        color = QColorDialog.getColor()
-        if color.isValid():
-            cursor = self.text_edit.textCursor()
-            if cursor.hasSelection():
-                format = cursor.charFormat()
-                format.setForeground(color)
-                cursor.setCharFormat(format)
-            else:
-                current_format = self.text_edit.currentCharFormat()
-                current_format.setForeground(color)
-                self.text_edit.setCurrentCharFormat(current_format)
-
-            self.text_color.setStyleSheet(
-                f'background-color: {color.name()}' if color != QtGui.QColor('black') else 'background-color: none')
 
     def save_as_docx(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Word Documents (*.docx)")
