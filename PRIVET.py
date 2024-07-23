@@ -1,159 +1,217 @@
 import sys
-from PyQt5 import QtWidgets, QtGui, QtCore
-from QtMainWindow import Ui_color
-from QtSearchWindow import Ui_QtSearchWindow
-from QtReplaceWindow import Ui_QtReplaceWindow
-from QtStyles import Ui_Form
-from QtNewStyle import Ui_QtNewStyleWindow
-from PyQt5.QtGui import QTextCursor, QTextBlockFormat
+import re
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTextEdit, QLineEdit, QPushButton, QCheckBox, QMessageBox
 
-
-class MainWindow(QtWidgets.QMainWindow, Ui_color):
+class TextSearchEditor(QWidget):
     def __init__(self):
         super().__init__()
-        self.setupUi(self)
-        self.search_window = SearchWindow()
-        self.replace_window = ReplaceWindow()
-        self.style_window = StyleWindow()
-        self.search.clicked.connect(self.open_search_window)
-        self.replace.clicked.connect(self.open_replace_window)
-        self.style.clicked.connect(self.open_style_window)
 
-        self.font.currentFontChanged.connect(self.update_font)
-        self.font_size.currentIndexChanged.connect(self.update_font_size)
+        self.setWindowTitle("Текстовый редактор")
+        self.setGeometry(100, 100, 600, 400)
 
-        self.bold.clicked.connect(self.toggle_bold)
-        self.italic.clicked.connect(self.toggle_italic)
-        self.underlined.clicked.connect(self.toggle_underlined)
+        # Основной компоновщик
+        self.layout = QVBoxLayout(self)
 
-        self.update_font()
-        self.update_font_size()
+        # Создание текстового редактора
+        self.text_edit = QTextEdit(self)
+        self.layout.addWidget(self.text_edit)
 
-        self.bold_active = False
-        self.italic_active = False
-        self.underlined_active = False
+        # Кнопка для открытия окна поиска
+        self.open_search_button = QPushButton("Открыть окно поиска", self)
+        self.open_search_button.clicked.connect(self.open_search_window)
+        self.layout.addWidget(self.open_search_button)
 
-        self.indent_value = 0
-        self.reduce_indentation.clicked.connect(self.update_indent)
-        self.increase_indentation.clicked.connect(self.update_indent)
-    def update_indent(self):
-        sender = self.sender()
-        if sender == self.increase_indentation:
-            self.indent_value += 1
-        elif self.indent_value > 0:
-            self.indent_value -= 1
-        block_format = QTextBlockFormat()
-        block_format.setIndent(self.indent_value)
-        cursor = self.text_edit.textCursor()
-        cursor.select(QTextCursor.Document)
-        cursor.mergeBlockFormat(block_format)
-        self.text_edit.setTextCursor(cursor)
-    def update_font(self, font=None):
-        if font is None:
-            font = self.font.currentFont()
-        self.apply_font(font)
+        # Кнопка для открытия окна замены
+        self.open_replace_button = QPushButton("Открыть окно замены", self)
+        self.open_replace_button.clicked.connect(self.open_replace_window)
+        self.layout.addWidget(self.open_replace_button)
 
-    def update_font_size(self):
-        size = int(self.font_size.currentText())
-        self.apply_font_size(size)
-
-    def apply_font(self, font):
-        current_font = self.text_edit.currentFont()
-        new_font = QtGui.QFont(font.family(), current_font.pointSize())
-        self.text_edit.setCurrentFont(new_font)
-
-    def apply_font_size(self, size):
-        current_font = self.text_edit.currentFont()
-        new_font = QtGui.QFont(current_font.family(), size)
-        self.text_edit.setCurrentFont(new_font)
-
-    def toggle_bold(self):
-        if self.bold_active:
-            self.bold.setStyleSheet('background-color: none')
-            self.bold_active = False
-            self.apply_font_bold(False)
-        else:
-            self.bold.setStyleSheet('background-color: lightblue')
-            self.bold_active = True
-            self.apply_font_bold(True)
-
-    def toggle_italic(self):
-        if self.italic_active:
-            self.italic.setStyleSheet('background-color: none')
-            self.italic_active = False
-            self.apply_font_italic(False)
-        else:
-            self.italic.setStyleSheet('background-color: lightblue')
-            self.italic_active = True
-            self.apply_font_italic(True)
-
-    def toggle_underlined(self):
-        if self.underlined_active:
-            self.underlined.setStyleSheet('background-color: none')
-            self.underlined_active = False
-            self.apply_font_underlined(False)
-        else:
-            self.underlined.setStyleSheet('background-color: lightblue')
-            self.underlined_active = True
-            self.apply_font_underlined(True)
-
-    def apply_font_bold(self, enabled):
-        current_font = self.text_edit.currentFont()
-        new_font = current_font
-        new_font.setBold(enabled)
-        self.text_edit.setCurrentFont(new_font)
-
-    def apply_font_italic(self, enabled):
-        current_font = self.text_edit.currentFont()
-        new_font = current_font
-        new_font.setItalic(enabled)
-        self.text_edit.setCurrentFont(new_font)
-
-    def apply_font_underlined(self, enabled):
-        current_font = self.text_edit.currentFont()
-        new_font = current_font
-        new_font.setUnderline(enabled)
-        self.text_edit.setCurrentFont(new_font)
+        self.setLayout(self.layout)
 
     def open_search_window(self):
+        """Открывает новое окно для поиска текста."""
+        self.search_window = SearchWindow(self.text_edit)
         self.search_window.show()
 
     def open_replace_window(self):
+        """Открывает новое окно для поиска текста."""
+        self.replace_window = ReplaceWindow(self.text_edit)
         self.replace_window.show()
 
-    def open_style_window(self):
-        self.style_window.show()
-
-class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
-    def __init__(self):
+class SearchWindow(QWidget):
+    def __init__(self, text_edit):
         super().__init__()
-        self.setupUi(self)
+        self.text_edit = text_edit
+        self.found_positions = []  # Список для хранения позиций найденных слов
+        self.current_index = -1  # Индекс для текущего найденного слова
 
-class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
-    def __init__(self):
+        # Основной компоновщик
+        self.layout = QVBoxLayout(self)
+        self.setWindowTitle("Поиск текста")
+        self.setGeometry(200, 200, 400, 200)
+
+        # Поле для ввода текста для поиска
+        self.search_input = QLineEdit(self)
+        self.layout.addWidget(self.search_input)
+
+        # Чекбоксы для настроек поиска
+        self.case_sensitive_checkbox = QCheckBox("Учитывать регистр")
+        self.layout.addWidget(self.case_sensitive_checkbox)
+
+        self.whole_word_checkbox = QCheckBox("Слово целиком")
+        self.layout.addWidget(self.whole_word_checkbox)
+
+        # Кнопка поиска
+        self.find_button = QPushButton("Найти")
+        self.find_button.clicked.connect(self.perform_search)
+        self.layout.addWidget(self.find_button)
+
+        # Кнопки навигации
+        self.next_button = QPushButton("Следующее")
+        self.next_button.clicked.connect(self.navigate_to_next)
+        self.layout.addWidget(self.next_button)
+
+        self.prev_button = QPushButton("Предыдущее")
+        self.prev_button.clicked.connect(self.navigate_to_previous)
+        self.layout.addWidget(self.prev_button)
+
+        self.setLayout(self.layout)
+
+    def perform_search(self):
+        """Метод, выполняющий поиск по тексту."""
+        search_text = self.search_input.text()
+        if self.case_sensitive_checkbox.isChecked():
+            flags = 0
+        else:
+            flags = re.IGNORECASE  # Учитываем регистр иначе
+
+        whole_word = self.whole_word_checkbox.isChecked()
+        pattern = search_text
+        if whole_word:
+            pattern = r'\b' + re.escape(search_text) + r'\b'
+
+        text = self.text_edit.toPlainText()
+        self.found_positions = [m.start() for m in re.finditer(pattern, text, flags)]
+        count = len(self.found_positions)
+
+        if count == 0:
+            self.show_message("Не найдено")
+            self.current_index = -1  # Сбрасываем индекс
+            self.clear_highlight()
+        else:
+            self.show_message(f"Найдено: {count} вхождений")
+            self.current_index = 0  # Сбрасываем индекс для первого вхождения
+            self.highlight_current_word()
+
+    def highlight_current_word(self):
+        """Метод для выделения текущего найденного слова."""
+        self.clear_highlight()  # Сначала снимаем выделение
+
+        if self.current_index >= 0 and self.current_index < len(self.found_positions):
+            cursor = self.text_edit.textCursor()
+            pos = self.found_positions[self.current_index]
+            cursor.setPosition(pos)
+            cursor.movePosition(cursor.Right, cursor.KeepAnchor, len(self.search_input.text()))
+            self.text_edit.setTextCursor(cursor)
+            self.text_edit.setFocus()
+
+    def clear_highlight(self):
+        """Метод для снятия выделения."""
+        cursor = self.text_edit.textCursor()
+        cursor.clearSelection()
+        self.text_edit.setTextCursor(cursor)
+
+    def show_message(self, message):
+        """Метод для отображения сообщения в диалоговом окне."""
+        msg_box = QMessageBox()
+        msg_box.setText(message)
+        msg_box.exec_()
+
+    def navigate_to_next(self):
+        """Навигация к следующему найденному слову."""
+        if not self.found_positions:
+            return
+        self.current_index = (self.current_index + 1) % len(self.found_positions)
+        self.highlight_current_word()
+
+    def navigate_to_previous(self):
+        """Навигация к предыдущему найденному слову."""
+        if not self.found_positions:
+            return
+        self.current_index = (self.current_index - 1) % len(self.found_positions)
+        self.highlight_current_word()
+
+
+class ReplaceWindow(QWidget):
+    def __init__(self, text_edit):
         super().__init__()
-        self.setupUi(self)
+        self.text_edit = text_edit
 
-class StyleWindow(QtWidgets.QWidget, Ui_Form):
-    def __init__(self):
-        super().__init__()
-        self.setupUi(self)
+        # Основной компоновщик
+        self.layout = QVBoxLayout(self)
+        self.setWindowTitle("Замена текста")
+        self.setGeometry(200, 200, 400, 200)
 
-        self.new_style_window = NewStyleWindow()
-        self.new_style.clicked.connect(self.open_new_style_window)
+        # Поле для ввода слова для замены
+        self.word_to_replace_input = QLineEdit(self)
+        self.word_to_replace_input.setPlaceholderText("Слово для замены")
+        self.layout.addWidget(self.word_to_replace_input)
 
-    def open_new_style_window(self):
-        self.new_style_window.show()
+        # Поле для ввода слова, на которое будем заменять
+        self.replacement_word_input = QLineEdit(self)
+        self.replacement_word_input.setPlaceholderText("Слово замены")
+        self.layout.addWidget(self.replacement_word_input)
 
-class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
-    def __init__(self):
-        super().__init__()
-        self.setupUi(self)
+        # Чекбоксы для настроек поиска
+        self.case_sensitive_checkbox = QCheckBox("Учитывать регистр")
+        self.layout.addWidget(self.case_sensitive_checkbox)
+
+        self.whole_word_checkbox = QCheckBox("Слово целиком")
+        self.layout.addWidget(self.whole_word_checkbox)
+
+        # Кнопка для замены
+        self.replace_button = QPushButton("Заменить все")
+        self.replace_button.clicked.connect(self.replace_all)
+        self.layout.addWidget(self.replace_button)
+
+        self.setLayout(self.layout)
+
+    def replace_all(self):
+        """Метод, выполняющий замену всех найденных слов."""
+        word_to_replace = self.word_to_replace_input.text()
+        replacement_word = self.replacement_word_input.text()
+
+        if not word_to_replace:
+            self.show_message("Пожалуйста, введите слово для замены.")
+            return
+
+        if self.case_sensitive_checkbox.isChecked():
+            flags = 0
+        else:
+            flags = re.IGNORECASE  # Учитываем регистр иначе
+
+        whole_word = self.whole_word_checkbox.isChecked()
+        pattern = word_to_replace
+        if whole_word:
+            pattern = r'\b' + re.escape(word_to_replace) + r'\b'
+
+        text = self.text_edit.toPlainText()
+        new_text = re.sub(pattern, replacement_word, text, flags=flags)
+        self.text_edit.setPlainText(new_text)
+
+        self.show_message(f"Все вхождения '{word_to_replace}' заменены на '{replacement_word}'.")
+
+    def show_message(self, message):
+        """Метод для отображения сообщения в диалоговом окне."""
+        msg_box = QMessageBox()
+        msg_box.setText(message)
+        msg_box.exec_()
+
 
 if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
+    app = QApplication(sys.argv)
+    editor = TextSearchEditor()
+    editor.show()
     sys.exit(app.exec_())
 
 
