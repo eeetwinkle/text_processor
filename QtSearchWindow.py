@@ -5,9 +5,6 @@ class Ui_QtSearchWindow(object):
     def setupUi(self, QtSearchWindow):
         QtSearchWindow.setObjectName("QtSearchWindow")
         QtSearchWindow.resize(500, 200)
-        self.pushButton_search = QtWidgets.QPushButton(QtSearchWindow)
-        self.pushButton_search.setGeometry(QtCore.QRect(390, 160, 93, 28))
-        self.pushButton_search.setObjectName("pushButton_search")
         self.layoutWidget = QtWidgets.QWidget(QtSearchWindow)
         self.layoutWidget.setGeometry(QtCore.QRect(20, 30, 461, 24))
         self.layoutWidget.setObjectName("layoutWidget")
@@ -35,6 +32,21 @@ class Ui_QtSearchWindow(object):
         self.checkBox_entirely = QtWidgets.QCheckBox(self.layoutWidget1)
         self.checkBox_entirely.setObjectName("checkBox_entirely")
         self.verticalLayout.addWidget(self.checkBox_entirely)
+        self.widget = QtWidgets.QWidget(QtSearchWindow)
+        self.widget.setGeometry(QtCore.QRect(190, 160, 295, 30))
+        self.widget.setObjectName("widget")
+        self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.widget)
+        self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.pushButton_search_3 = QtWidgets.QPushButton(self.widget)
+        self.pushButton_search_3.setObjectName("pushButton_search_3")
+        self.horizontalLayout_2.addWidget(self.pushButton_search_3)
+        self.pushButton_search_2 = QtWidgets.QPushButton(self.widget)
+        self.pushButton_search_2.setObjectName("pushButton_search_2")
+        self.horizontalLayout_2.addWidget(self.pushButton_search_2)
+        self.pushButton_search = QtWidgets.QPushButton(self.widget)
+        self.pushButton_search.setObjectName("pushButton_search")
+        self.horizontalLayout_2.addWidget(self.pushButton_search)
 
         self.retranslateUi(QtSearchWindow)
         QtCore.QMetaObject.connectSlotsByName(QtSearchWindow)
@@ -42,11 +54,13 @@ class Ui_QtSearchWindow(object):
     def retranslateUi(self, QtSearchWindow):
         _translate = QtCore.QCoreApplication.translate
         QtSearchWindow.setWindowTitle(_translate("QtSearchWindow", "Form"))
-        self.pushButton_search.setText(_translate("QtSearchWindow", "Найти далее"))
         self.label.setText(_translate("QtSearchWindow", "Найти:"))
         self.label_2.setText(_translate("QtSearchWindow", "Параметры поиска:"))
         self.checkBox_register.setText(_translate("QtSearchWindow", "Учитывать регистр"))
         self.checkBox_entirely.setText(_translate("QtSearchWindow", "Только слово целиком"))
+        self.pushButton_search_3.setText(_translate("QtSearchWindow", "Предыдущее"))
+        self.pushButton_search_2.setText(_translate("QtSearchWindow", "Следующее"))
+        self.pushButton_search.setText(_translate("QtSearchWindow", "Найти"))
 
 
 if __name__ == "__main__":
