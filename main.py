@@ -1,13 +1,14 @@
 import sys
 import re
 from PyQt5 import QtWidgets, QtGui, QtCore
+
 from QtMainWindow import Ui_color
 from QtSearchWindow import Ui_QtSearchWindow
 from QtReplaceWindow import Ui_QtReplaceWindow
 from QtStyles import Ui_Form
 from QtNewStyle import Ui_QtNewStyleWindow
 from PyQt5.QtGui import QTextCursor, QTextBlockFormat
-from PyQt5.QtWidgets import QColorDialog, QFileDialog
+from PyQt5.QtWidgets import QColorDialog, QFileDialog, QMessageBox
 from docx import Document
 from docx.shared import Pt, RGBColor
 
@@ -17,7 +18,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         super().__init__()
         self.setupUi(self)
         self.search_window = SearchWindow(self.text_edit)
-        self.replace_window = ReplaceWindow()
+        self.replace_window = ReplaceWindow(self.text_edit)
         self.style_window = StyleWindow()
         self.search.clicked.connect(self.open_search_window)
         self.replace.clicked.connect(self.open_replace_window)
@@ -96,7 +97,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         format = QtGui.QTextCharFormat()
         format.setFontUnderline(self.underlined_active)
         self.merge_format_on_word_or_selection(format)
-
     def change_text_color(self):
         color = QColorDialog.getColor()
         if color.isValid():
@@ -163,13 +163,16 @@ class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
         self.text_edit = text_edit
         self.setupUi(self)
         self.pushButton_search.clicked.connect(self.perform_search)
+        self.pushButton_search_2.clicked.connect(self.navigate_to_next)
+        self.pushButton_search_3.clicked.connect(self.navigate_to_previous)
 
+    # Метод, выполняющий поиск по тексту
     def perform_search(self):
         search_text = self.lineEdit_search.text()
         if self.checkBox_register.isChecked():
             flags = 0
         else:
-            flags = re.IGNORECASE
+            flags = re.IGNORECASE  # Учитываем регистр иначе
 
         whole_word = self.checkBox_entirely.isChecked()
         pattern = search_text
@@ -177,24 +180,95 @@ class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
             pattern = r'\b' + re.escape(search_text) + r'\b'
 
         text = self.text_edit.toPlainText()
-        found = re.search(pattern, text, flags)
+        self.found_positions = [m.start() for m in re.finditer(pattern, text, flags)]
+        count = len(self.found_positions)
 
-        if not found:
-            print("Текст не найден!")
+        if count == 0:
+            self.show_message("Не найдено")
+            self.current_index = -1  # Сбрасываем индекс
+            self.clear_highlight()
         else:
+            self.show_message(f"Найдено: {count} вхождений")
+            self.current_index = 0  # Сбрасываем индекс для первого вхождения
+            self.highlight_current_word()
+
+    # Метод для выделения текущего найденного слова
+    def highlight_current_word(self):
+        self.clear_highlight()  # Сначала снимаем выделение
+
+        if self.current_index >= 0 and self.current_index < len(self.found_positions):
             cursor = self.text_edit.textCursor()
-            cursor.setPosition(found.start())
-            cursor.setPosition(found.end(), cursor.KeepAnchor)
+            pos = self.found_positions[self.current_index]
+            cursor.setPosition(pos)
+            cursor.movePosition(cursor.Right, cursor.KeepAnchor, len(self.lineEdit_search.text()))
             self.text_edit.setTextCursor(cursor)
             self.text_edit.setFocus()
-            print(f"Найдено: {search_text}")
-            self.text_edit.ensureCursorVisible()
+
+    # Метод для снятия выделения
+    def clear_highlight(self):
+        cursor = self.text_edit.textCursor()
+        cursor.clearSelection()
+        self.text_edit.setTextCursor(cursor)
+
+    # Метод для отображения сообщения в диалоговом окне
+    def show_message(self, message):
+        msg_box = QMessageBox()
+        msg_box.setText(message)
+        msg_box.exec_()
+
+    # Навигация к следующему найденному слову
+    def navigate_to_next(self):
+        if not self.found_positions:
+            return
+        self.current_index = (self.current_index + 1) % len(self.found_positions)
+        self.highlight_current_word()
+
+    # Навигация к предыдущему найденному слову
+    def navigate_to_previous(self):
+        if not self.found_positions:
+            return
+        self.current_index = (self.current_index - 1) % len(self.found_positions)
+        self.highlight_current_word()
+
 
 
 class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
-    def __init__(self):
+    def __init__(self, text_edit):
         super().__init__()
+        self.text_edit = text_edit
         self.setupUi(self)
+        self.pushButton_replace.clicked.connect(self.replace_all)
+
+    # Метод, выполняющий замену всех найденных слов
+    def replace_all(self):
+        word_to_replace = self.lineEdit_search2.text()
+        replacement_word = self.lineEdit_replace.text()
+
+        if not word_to_replace:
+            self.show_message("Пожалуйста, введите слово для замены.")
+            return
+
+        if self.checkBox_register.isChecked():
+            flags = 0
+        else:
+            flags = re.IGNORECASE  # Учитываем регистр иначе
+
+        whole_word = self.checkBox_entirely.isChecked()
+        pattern = word_to_replace
+        if whole_word:
+            pattern = r'\b' + re.escape(word_to_replace) + r'\b'
+
+        text = self.text_edit.toPlainText()
+        new_text = re.sub(pattern, replacement_word, text, flags=flags)
+        self.text_edit.setPlainText(new_text)
+
+        self.show_message(f"Все вхождения '{word_to_replace}' заменены на '{replacement_word}'.")
+
+    # Метод для отображения сообщения в диалоговом окне
+    def show_message(self, message):
+        msg_box = QMessageBox()
+        msg_box.setText(message)
+        msg_box.exec_()
 
 
 class StyleWindow(QtWidgets.QWidget, Ui_Form):
@@ -213,7 +287,6 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
