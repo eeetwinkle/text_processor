@@ -6,8 +6,10 @@ from QtSearchWindow import Ui_QtSearchWindow
 from QtReplaceWindow import Ui_QtReplaceWindow
 from QtStyles import Ui_Form
 from QtNewStyle import Ui_QtNewStyleWindow
-from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat
+from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat, QPixmap
 from PyQt5.QtWidgets import QColorDialog, QFileDialog, QMessageBox, QInputDialog
+from docx import Document
+from docx.shared import Pt, RGBColor
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_color):
@@ -145,24 +147,35 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
                     font.color.rgb = RGBColor(color.red(), color.green(), color.blue())
 
             doc.save(file_path)
+
     def insert_image(self):
         options = QFileDialog.Options()
         file_name, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "",
-                                                     "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
+                                                   "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
         if file_name:
-            cursor = self.text_edit.textCursor()
-            image_format = QTextImageFormat()
-            image_format.setName(file_name)
+            try:
+                cursor = self.text_edit.textCursor()
+                image_format = QTextImageFormat()
+                image_format.setName(file_name)
 
-            # Запрашиваем размер у пользователя
-            width, ok = QInputDialog.getInt(self, "Ширина изображения", "Введите ширину:", 100, 1, 3000)
-            if ok:
-                height, ok = QInputDialog.getInt(self, "Высота изображения", "Введите высоту:", 100, 1, 3000)
+                # Получаем исходные размеры изображения
+                pixmap = QPixmap(file_name)
+                if pixmap.isNull():
+                    raise ValueError("Изображение не может быть загружено.")
+
+                # Запрашиваем новые размеры у пользователя с предложением использовать исходные
+                default_width = pixmap.width()
+                default_height = pixmap.height()
+                width, ok = QInputDialog.getInt(self, "Ширина изображения", "Введите ширину:", default_width, 1, 3000)
                 if ok:
-                    image_format.setWidth(width)
-                    image_format.setHeight(height)
-
-                    cursor.insertImage(image_format)
+                    height, ok = QInputDialog.getInt(self, "Высота изображения", "Введите высоту:", default_height, 1,
+                                                     3000)
+                    if ok:
+                        image_format.setWidth(width)
+                        image_format.setHeight(height)
+                        cursor.insertImage(image_format)
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка", f"Не удалось вставить изображение: {str(e)}")
 
     def open_search_window(self):
         self.search_window.show()
