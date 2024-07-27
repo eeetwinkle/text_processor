@@ -31,8 +31,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
         self.font.currentFontChanged.connect(self.update_font)
         self.font_size.currentIndexChanged.connect(self.update_font_size)
-
         self.size_interval.currentIndexChanged.connect(self.update_line_spacing)
+        self.pages.valueChanged.connect(self.change_page)
 
         self.bold.clicked.connect(self.toggle_bold)
         self.italic.clicked.connect(self.toggle_italic)
@@ -46,6 +46,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.increase_indentation.clicked.connect(self.update_indent)
 
         self.paste.clicked.connect(self.insert_image)
+
+        self.page_contents = {}  # Хранение содержимого страниц
+        self.page_formats = {}  # Хранение форматов страниц
+        self.current_page = 1
+        self.pages.setMinimum(1)
+        self.pages.setValue(1)
+        self.load_page_content()
 
     def update_line_spacing(self):
         value = self.size_interval.currentText()
@@ -141,26 +148,28 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Word Documents (*.docx)")
         if file_path:
             doc = Document()
-            cursor = self.text_edit.textCursor()
-            cursor.select(QTextCursor.Document)
-            text = cursor.selection().toPlainText()
+            for page in sorted(self.page_contents.keys()):
+                text = self.page_contents[page]
+                paragraphs = text.split('\n')
+                for para in paragraphs:
+                    if para.strip():
+                        p = doc.add_paragraph()
+                        run = p.add_run(para)
+                        cursor = QtGui.QTextCursor(self.text_edit.document())
+                        cursor.setPosition(0)
 
-            paragraphs = text.split('\n')
-            for para in paragraphs:
-                if para.strip():
-                    p = doc.add_paragraph()
-                    run = p.add_run(para)
-                    format = cursor.charFormat()
+                        # Получение формата для текущей страницы
+                        format = self.page_formats.get(page, cursor.charFormat())
 
-                    font = run.font
-                    font.name = format.fontFamily()
-                    font.size = Pt(format.fontPointSize())
-                    font.bold = format.fontWeight() == QtGui.QFont.Bold
-                    font.italic = format.fontItalic()
-                    font.underline = format.fontUnderline()
+                        font = run.font
+                        font.name = format.fontFamily()
+                        font.size = Pt(format.fontPointSize())
+                        font.bold = format.fontWeight() == QtGui.QFont.Bold
+                        font.italic = format.fontItalic()
+                        font.underline = format.fontUnderline()
 
-                    color = format.foreground().color()
-                    font.color.rgb = RGBColor(color.red(), color.green(), color.blue())
+                        color = format.foreground().color()
+                        font.color.rgb = RGBColor(color.red(), color.green(), color.blue())
 
             doc.save(file_path)
 
@@ -201,6 +210,28 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
     def open_style_window(self):
         self.style_window.show()
+
+    def change_page(self):
+        # Сохраняем содержимое и формат текущей страницы
+        self.page_contents[self.current_page] = self.text_edit.toPlainText()
+        cursor = self.text_edit.textCursor()
+        self.page_formats[self.current_page] = cursor.charFormat()
+
+        # Меняем страницу
+        self.current_page = self.pages.value()
+        self.load_page_content()
+
+    def load_page_content(self):
+        # Загружаем содержимое и формат для текущей страницы
+        text = self.page_contents.get(self.current_page, "")
+        self.text_edit.setPlainText(text)
+
+        format = self.page_formats.get(self.current_page, QtGui.QTextCharFormat())
+        cursor = self.text_edit.textCursor()
+        cursor.select(QTextCursor.Document)
+        cursor.setCharFormat(format)
+        self.text_edit.setTextCursor(cursor)
+
 
 class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
     def __init__(self, text_edit):
