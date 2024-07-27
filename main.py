@@ -32,6 +32,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.font.currentFontChanged.connect(self.update_font)
         self.font_size.currentIndexChanged.connect(self.update_font_size)
 
+        self.size_interval.currentIndexChanged.connect(self.update_line_spacing)
+
         self.bold.clicked.connect(self.toggle_bold)
         self.italic.clicked.connect(self.toggle_italic)
         self.underlined.clicked.connect(self.toggle_underlined)
@@ -44,6 +46,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.increase_indentation.clicked.connect(self.update_indent)
 
         self.paste.clicked.connect(self.insert_image)
+
+    def update_line_spacing(self):
+        value = self.size_interval.currentText()
+        try:
+            spacing = float(value)
+        except ValueError:
+            return
+
+        cursor = self.text_edit.textCursor()
+        block_format = cursor.blockFormat()
+        block_format.setLineHeight(spacing * 100, QtGui.QTextBlockFormat.ProportionalHeight)
+        cursor.setBlockFormat(block_format)
+        self.text_edit.setTextCursor(cursor)
 
     def update_indent(self):
         sender = self.sender()
@@ -98,6 +113,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         format = QtGui.QTextCharFormat()
         format.setFontUnderline(self.underlined_active)
         self.merge_format_on_word_or_selection(format)
+
     def change_text_color(self):
         color = QColorDialog.getColor()
         if color.isValid():
@@ -185,7 +201,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
     def open_style_window(self):
         self.style_window.show()
-
 
 class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
     def __init__(self, text_edit):
