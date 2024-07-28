@@ -1,3 +1,4 @@
+import sqlite3
 import sys
 import re
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -363,7 +364,156 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+        self.bold_active = False
+        self.italic_active = False
+        self.underlined_active = False
+        self.current_text_color = QtGui.QColor('black')  # Изначальный цвет текста
+        self.text_color.clicked.connect(self.change_text_color)
+        self.font.currentFontChanged.connect(self.update_font)
+        self.font_size.currentIndexChanged.connect(self.update_font_size)
+        self.line_spacing.currentIndexChanged.connect(self.update_line_spacing)
 
+        self.bold.clicked.connect(self.toggle_bold)
+        self.italic.clicked.connect(self.toggle_italic)
+        self.underlined.clicked.connect(self.toggle_underlined)
+
+        self.save.clicked.connect(self.save_style)
+
+        self.update_font()
+        self.update_font_size()
+
+        self.indent_value = 0
+        self.reduce_indentation.clicked.connect(self.update_indent)
+        self.increase_indentation.clicked.connect(self.update_indent)
+
+    # Новый метод для сохранения стиля
+    def save_style(self):
+        style_name = self.style_name.text()
+        current_font = self.font.currentFont().family()
+        font_size = int(self.font_size.currentText())
+        text_color = self.current_text_color.name()
+        line_spacing = float(self.line_spacing.currentText())
+        is_bold = self.bold_active
+        is_italic = self.italic_active
+        is_underlined = self.underlined_active
+
+        self.add_row(style_name, current_font, font_size, is_bold, is_italic, is_underlined, line_spacing, text_color)
+
+
+    def update_line_spacing(self):
+        value = self.line_spacing.currentText()
+        try:
+            spacing = float(value)
+        except ValueError:
+            return
+
+        cursor = self.text_edit.textCursor()
+        block_format = cursor.blockFormat()
+        block_format.setLineHeight(spacing * 100, QtGui.QTextBlockFormat.ProportionalHeight)
+        cursor.setBlockFormat(block_format)
+        self.text_edit.setTextCursor(cursor)
+
+    def update_indent(self):
+        sender = self.sender()
+        if sender == self.increase_indentation:
+            self.indent_value += 1
+        elif self.indent_value > 0:
+            self.indent_value -= 1
+        block_format = QTextBlockFormat()
+        block_format.setIndent(self.indent_value)
+        cursor = self.text_edit.textCursor()
+        cursor.select(QTextCursor.Document)
+        cursor.mergeBlockFormat(block_format)
+        self.text_edit.setTextCursor(cursor)
+
+    def update_font(self, font=None):
+        if font is None:
+            font = self.font.currentFont()
+        self.apply_font(font)
+
+    def update_font_size(self):
+        size = int(self.font_size.currentText())
+        self.apply_font_size(size)
+
+    def apply_font(self, font):
+        format = QtGui.QTextCharFormat()
+        format.setFontFamily(font.family())
+        self.merge_format_on_word_or_selection(format)
+
+    def apply_font_size(self, size):
+        format = QtGui.QTextCharFormat()
+        format.setFontPointSize(size)
+        self.merge_format_on_word_or_selection(format)
+
+    def toggle_bold(self):
+        self.bold_active = not self.bold_active
+        self.bold.setStyleSheet('background-color: lightblue' if self.bold_active else 'background-color: none')
+        format = QtGui.QTextCharFormat()
+        format.setFontWeight(QtGui.QFont.Bold if self.bold_active else QtGui.QFont.Normal)
+        self.merge_format_on_word_or_selection(format)
+
+    def toggle_italic(self):
+        self.italic_active = not self.italic_active
+        self.italic.setStyleSheet('background-color: lightblue' if self.italic_active else 'background-color: none')
+        format = QtGui.QTextCharFormat()
+        format.setFontItalic(self.italic_active)
+        self.merge_format_on_word_or_selection(format)
+
+    def toggle_underlined(self):
+        self.underlined_active = not self.underlined_active
+        self.underlined.setStyleSheet(
+            'background-color: lightblue' if self.underlined_active else 'background-color: none')
+        format = QtGui.QTextCharFormat()
+        format.setFontUnderline(self.underlined_active)
+        self.merge_format_on_word_or_selection(format)
+
+    def change_text_color(self):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            self.current_text_color = color  # Обновляем текущий цвет текста
+            format = QtGui.QTextCharFormat()
+            format.setForeground(color)
+            self.merge_format_on_word_or_selection(format)
+            self.text_color.setStyleSheet(
+                f'background-color: {color.name()}' if color != QtGui.QColor('black') else 'background-color: none')
+
+    def get_current_text_color(self):
+        return self.current_text_color
+
+    def merge_format_on_word_or_selection(self, format):
+        cursor = self.text_edit.textCursor()
+        if not cursor.hasSelection():
+            cursor.select(QTextCursor.WordUnderCursor)
+        cursor.mergeCharFormat(format)
+        self.text_edit.mergeCurrentCharFormat(format)
+
+    def show_message(self, message):
+        msg_box = QMessageBox()
+        msg_box.setText(message)
+        msg_box.exec_()
+
+    def add_row(self, name, shrift, pt, bold, italic, underlined, interval, color):
+        print(f"Style Name: {name}, Font: {shrift}, Size: {pt}, Color: {color}, Spacing: {interval}, Bold: {bold}, Italic: {italic}, Underlined: {underlined}")
+
+        self.conn = sqlite3.connect("text_processor.db")
+        if name != '':
+            try:
+
+                cur = self.conn.cursor()
+                a = f"""INSERT INTO styles(name, shrift, pt, bold, italic, underlined, interval, color) 
+                VALUES("{name}", "{shrift}", {pt}, "{bold}", "{italic}", "{underlined}", {interval}, "{color}" )"""
+                cur.execute(a)
+                self.conn.commit()
+                cur.close()
+
+                self.show_message("Успешное добавление стиля")
+
+
+            except Exception as e:
+                self.show_message("не добавлено")
+                print(e)
+        else:
+            self.show_message("Придумайте название стиля")
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     main_window = MainWindow()
