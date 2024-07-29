@@ -1,16 +1,15 @@
-import sqlite3
 import sys
 import re
-from PyQt5 import QtWidgets, QtGui, QtCore
+import sqlite3
+from PyQt5 import QtWidgets, QtGui
+from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat, QPixmap, QTextDocument, QTextCharFormat
+from PyQt5.QtWidgets import QColorDialog, QFileDialog, QMessageBox, QInputDialog
+from PyQt5.QtPrintSupport import QPrinter
 from QtMainWindow import Ui_color
 from QtSearchWindow import Ui_QtSearchWindow
 from QtReplaceWindow import Ui_QtReplaceWindow
 from QtStyles import Ui_Form
 from QtNewStyle import Ui_QtNewStyleWindow
-from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat, QPixmap
-from PyQt5.QtWidgets import QColorDialog, QFileDialog, QMessageBox, QInputDialog
-from docx import Document
-from docx.shared import Pt, RGBColor
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_color):
@@ -24,7 +23,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.replace.clicked.connect(self.open_replace_window)
         self.style.clicked.connect(self.open_style_window)
         self.text_color.clicked.connect(self.change_text_color)
-        self.save.clicked.connect(self.save_as_docx)
+        self.save.clicked.connect(self.save_as_pdf)
 
         self.bold_active = False
         self.italic_active = False
@@ -49,7 +48,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.paste.clicked.connect(self.insert_image)
 
         self.page_contents = {}  # Хранение содержимого страниц
-        self.page_formats = {}  # Хранение форматов страниц
         self.current_page = 1
         self.pages.setMinimum(1)
         self.pages.setValue(1)
@@ -145,34 +143,49 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         format.setFontUnderline(self.underlined_active)
         self.text_edit.setCurrentCharFormat(format)
 
-    def save_as_docx(self):
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Word Documents (*.docx)")
+    def save_as_pdf(self):
+        # Сначала сохраняем текущую страницу
+        self.page_contents[self.current_page] = self.text_edit.toHtml()
+
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "PDF Files (*.pdf)")
         if file_path:
-            doc = Document()
-            for page in sorted(self.page_contents.keys()):
-                text = self.page_contents[page]
-                paragraphs = text.split('\n')
-                for para in paragraphs:
-                    if para.strip():
-                        p = doc.add_paragraph()
-                        run = p.add_run(para)
-                        cursor = QtGui.QTextCursor(self.text_edit.document())
-                        cursor.setPosition(0)
+            try:
+                printer = QPrinter(QPrinter.HighResolution)
+                printer.setOutputFormat(QPrinter.PdfFormat)
+                printer.setOutputFileName(file_path)
 
-                        # Получение формата для текущей страницы
-                        format = self.page_formats.get(page, cursor.charFormat())
+                # Создаем новый документ для финального PDF
+                final_document = QTextDocument()
 
-                        font = run.font
-                        font.name = format.fontFamily()
-                        font.size = Pt(format.fontPointSize())
-                        font.bold = format.fontWeight() == QtGui.QFont.Bold
-                        font.italic = format.fontItalic()
-                        font.underline = format.fontUnderline()
+                # Объединяем содержимое всех страниц в один HTML документ
+                full_html = "<html><body>"
+                for page in sorted(self.page_contents.keys()):
+                    text = self.page_contents.get(page, "")
+                    if page != min(self.page_contents.keys()):  # Добавляем разрыв страницы между страницами
+                        full_html += "<div style='page-break-before:always;'></div>"
+                    full_html += f"<div>{text}</div>"
 
-                        color = format.foreground().color()
-                        font.color.rgb = RGBColor(color.red(), color.green(), color.blue())
+                full_html += "</body></html>"
 
-            doc.save(file_path)
+                final_document.setHtml(full_html)
+                final_document.print_(printer)
+                QMessageBox.information(self, "Сохранение завершено", f"Документ сохранен по пути {file_path}")
+
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка сохранения", f"Произошла ошибка при сохранении PDF: {str(e)}")
+
+    def change_page(self):
+        # Сохраняем содержимое и формат текущей страницы
+        self.page_contents[self.current_page] = self.text_edit.toHtml()
+
+        # Меняем страницу
+        self.current_page = self.pages.value()
+        self.load_page_content()
+
+    def load_page_content(self):
+        # Загружаем содержимое и формат для текущей страницы
+        text = self.page_contents.get(self.current_page, "")
+        self.text_edit.setHtml(text)
 
     def insert_image(self):
         options = QFileDialog.Options()
@@ -211,27 +224,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
     def open_style_window(self):
         self.style_window.show()
-
-    def change_page(self):
-        # Сохраняем содержимое и формат текущей страницы
-        self.page_contents[self.current_page] = self.text_edit.toPlainText()
-        cursor = self.text_edit.textCursor()
-        self.page_formats[self.current_page] = cursor.charFormat()
-
-        # Меняем страницу
-        self.current_page = self.pages.value()
-        self.load_page_content()
-
-    def load_page_content(self):
-        # Загружаем содержимое и формат для текущей страницы
-        text = self.page_contents.get(self.current_page, "")
-        self.text_edit.setPlainText(text)
-
-        format = self.page_formats.get(self.current_page, QtGui.QTextCharFormat())
-        cursor = self.text_edit.textCursor()
-        cursor.select(QTextCursor.Document)
-        cursor.setCharFormat(format)
-        self.text_edit.setTextCursor(cursor)
 
 
 class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
@@ -306,7 +298,6 @@ class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
             return
         self.current_index = (self.current_index - 1) % len(self.found_positions)
         self.highlight_current_word()
-
 
 
 class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
@@ -398,7 +389,6 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
         is_underlined = self.underlined_active
 
         self.add_row(style_name, current_font, font_size, is_bold, is_italic, is_underlined, line_spacing, text_color)
-
 
     def update_line_spacing(self):
         value = self.line_spacing.currentText()
@@ -493,12 +483,12 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
         msg_box.exec_()
 
     def add_row(self, name, shrift, pt, bold, italic, underlined, interval, color):
-        print(f"Style Name: {name}, Font: {shrift}, Size: {pt}, Color: {color}, Spacing: {interval}, Bold: {bold}, Italic: {italic}, Underlined: {underlined}")
+        print(
+            f"Style Name: {name}, Font: {shrift}, Size: {pt}, Color: {color}, Spacing: {interval}, Bold: {bold}, Italic: {italic}, Underlined: {underlined}")
 
         self.conn = sqlite3.connect("text_processor.db")
         if name != '':
             try:
-
                 cur = self.conn.cursor()
                 a = f"""INSERT INTO styles(name, shrift, pt, bold, italic, underlined, interval, color) 
                 VALUES("{name}", "{shrift}", {pt}, "{bold}", "{italic}", "{underlined}", {interval}, "{color}" )"""
@@ -508,12 +498,13 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
 
                 self.show_message("Успешное добавление стиля")
 
-
             except Exception as e:
                 self.show_message("не добавлено")
                 print(e)
         else:
             self.show_message("Придумайте название стиля")
+
+
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     main_window = MainWindow()
