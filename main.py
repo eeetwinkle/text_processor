@@ -2,7 +2,7 @@ import sys
 import re
 import sqlite3
 from PyQt5 import QtWidgets, QtGui
-from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat, QPixmap, QTextDocument, QTextCharFormat
+from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat, QPixmap, QTextDocument, QTextFrameFormat
 from PyQt5.QtWidgets import QColorDialog, QFileDialog, QMessageBox, QInputDialog
 from PyQt5.QtPrintSupport import QPrinter
 from QtMainWindow import Ui_color
@@ -47,11 +47,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
         self.paste.clicked.connect(self.insert_image)
 
-        self.page_contents = {}  # Хранение содержимого страниц
+        self.page_contents = {}
         self.current_page = 1
         self.pages.setMinimum(1)
         self.pages.setValue(1)
         self.load_page_content()
+
+        self.set_page_margins()
+
+    def set_page_margins(self):
+        page_format = QTextFrameFormat()
+        page_format.setLeftMargin(50)
+        page_format.setRightMargin(50)
+        page_format.setTopMargin(50)
+        page_format.setBottomMargin(50)
+        self.text_edit.document().rootFrame().setFrameFormat(page_format)
 
     def update_line_spacing(self):
         value = self.size_interval.currentText()
@@ -144,7 +154,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.text_edit.setCurrentCharFormat(format)
 
     def save_as_pdf(self):
-        # Сначала сохраняем текущую страницу
         self.page_contents[self.current_page] = self.text_edit.toHtml()
 
         file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "PDF Files (*.pdf)")
@@ -154,14 +163,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
                 printer.setOutputFormat(QPrinter.PdfFormat)
                 printer.setOutputFileName(file_path)
 
-                # Создаем новый документ для финального PDF
                 final_document = QTextDocument()
 
-                # Объединяем содержимое всех страниц в один HTML документ
                 full_html = "<html><body>"
                 for page in sorted(self.page_contents.keys()):
                     text = self.page_contents.get(page, "")
-                    if page != min(self.page_contents.keys()):  # Добавляем разрыв страницы между страницами
+                    if page != min(self.page_contents.keys()):
                         full_html += "<div style='page-break-before:always;'></div>"
                     full_html += f"<div>{text}</div>"
 
@@ -175,15 +182,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
                 QMessageBox.critical(self, "Ошибка сохранения", f"Произошла ошибка при сохранении PDF: {str(e)}")
 
     def change_page(self):
-        # Сохраняем содержимое и формат текущей страницы
         self.page_contents[self.current_page] = self.text_edit.toHtml()
 
-        # Меняем страницу
         self.current_page = self.pages.value()
         self.load_page_content()
 
     def load_page_content(self):
-        # Загружаем содержимое и формат для текущей страницы
         text = self.page_contents.get(self.current_page, "")
         self.text_edit.setHtml(text)
 
