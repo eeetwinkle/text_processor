@@ -61,7 +61,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
     def closeEvent(self, event):
         if self.text_edit.document().isModified():
-            unsaved_warning_message = "У вас есть несохраненные данные. Они будут утеряны при закрытии программы. Хотите сохранить изменения?"
+            unsaved_warning_message = ("У вас есть несохраненные данные. Они будут утеряны при закрытии программы. "
+                                       "Хотите сохранить изменения?")
             message_box = QMessageBox()
             message_box.setIcon(QMessageBox.Warning)
             message_box.setWindowTitle("Предупреждение")
@@ -100,7 +101,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.page_contents[self.current_page] = self.text_edit.toHtml()
 
         options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "HTML Files (*.html);;PDF Files (*.pdf)", options=options)
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "HTML Files (*.html);;PDF Files (*.pdf)",
+                                                   options=options)
 
         if file_path:
             if file_path.endswith('.pdf'):
@@ -157,7 +159,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
     def open_html_file(self):
         if not self.text_edit.document().isEmpty() and self.text_edit.document().isModified():
-            unsaved_warning_message = "У вас есть несохраненные данные. Они будут утеряны при открытии нового файла. Продолжить?"
+            unsaved_warning_message = ("У вас есть несохраненные данные. Они будут утеряны при открытии нового файла."
+                                       " Продолжить?")
             reply = QMessageBox.warning(
                 self,
                 "Предупреждение",
@@ -174,7 +177,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.pages.setValue(1)
 
         options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getOpenFileName(self, "Открыть файл", "", "HTML Files (*.html);;All Files (*)", options=options)
+        file_path, _ = QFileDialog.getOpenFileName(self, "Открыть файл", "", "HTML Files (*.html);;All Files (*)",
+                                                   options=options)
 
         if file_path:
             try:
@@ -203,9 +207,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
                 QMessageBox.critical(self, "Ошибка загрузки", f"Произошла ошибка при загрузке HTML: {str(e)}")
 
         self.style_window.style_selected.connect(self.apply_style)  # Соединяем сигнал со слотом
-
-    def open_style_window(self):
-        self.style_window.show()
 
     def apply_style(self, style_name):
         # Подключаемся к базе данных и применяем стиль
@@ -328,7 +329,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
     def toggle_underlined(self):
         self.underlined_active = not self.underlined_active
-        self.underlined.setStyleSheet('background-color: lightblue' if self.underlined_active else 'background-color: none')
+        self.underlined.setStyleSheet('background-color: lightblue' if self.underlined_active
+                                      else 'background-color: none')
         format = QtGui.QTextCharFormat()
         format.setFontUnderline(self.underlined_active)
         self.merge_format_on_word_or_selection(format)
@@ -339,7 +341,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
             format = QtGui.QTextCharFormat()
             format.setForeground(color)
             self.merge_format_on_word_or_selection(format)
-            self.text_color.setStyleSheet(f'background-color: {color.name()}' if color != QtGui.QColor('black') else 'background-color: none')
+            self.text_color.setStyleSheet(f'background-color: {color.name()}' if color != QtGui.QColor('black')
+                                          else 'background-color: none')
 
     def merge_format_on_word_or_selection(self, format):
         cursor = self.text_edit.textCursor()
@@ -372,7 +375,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
     def insert_image(self):
         options = QFileDialog.Options()
-        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "", "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
+        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "",
+                                                   "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
         if file_name:
             try:
                 cursor = self.text_edit.textCursor()
@@ -389,7 +393,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
                 default_height = pixmap.height()
                 width, ok = QInputDialog.getInt(self, "Ширина изображения", "Введите ширину:", default_width, 1, 3000)
                 if ok:
-                    height, ok = QInputDialog.getInt(self, "Высота изображения", "Введите высоту:", default_height, 1, 3000)
+                    height, ok = QInputDialog.getInt(self, "Высота изображения", "Введите высоту:",
+                                                     default_height, 1, 3000)
                     if ok:
                         image_format.setWidth(width)
                         image_format.setHeight(height)
@@ -770,7 +775,7 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
         self.font_size.setCurrentText("8")
         self.close()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     main_window = MainWindow()
     main_window.show()
