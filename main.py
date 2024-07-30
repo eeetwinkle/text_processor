@@ -1,9 +1,9 @@
 import sys
 import re
 import sqlite3
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat, QPixmap, QTextDocument, QTextFrameFormat
-from PyQt5.QtWidgets import QColorDialog, QFileDialog, QMessageBox, QInputDialog
+from PyQt5.QtWidgets import QColorDialog, QFileDialog, QMessageBox, QInputDialog, QWidget, QVBoxLayout, QRadioButton
 from PyQt5.QtPrintSupport import QPrinter
 from QtMainWindow import Ui_color
 from QtSearchWindow import Ui_QtSearchWindow
@@ -201,6 +201,63 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка загрузки", f"Произошла ошибка при загрузке HTML: {str(e)}")
+
+        self.style_window.style_selected.connect(self.apply_style)  # Соединяем сигнал со слотом
+
+    def open_style_window(self):
+        self.style_window.show()
+
+    def apply_style(self, style_name):
+        # Подключаемся к базе данных и применяем стиль
+        conn = sqlite3.connect('text_processor.db')
+        cur = conn.cursor()
+
+        # Запрос для получения параметров стиля
+        cur.execute("SELECT * FROM styles WHERE name = ?", (style_name,))
+        style = cur.fetchone()
+
+        if style:
+            # Примените стиль к тексту
+            font_family = style[1]  # Шрифт (2 колонка)
+            font_size = style[2]  # Размер шрифта (3 колонка)
+            is_bold = style[3]  # Жирный шрифт (4 колонка)
+            if is_bold == "True":
+                is_bold = True
+            else:
+                is_bold = False
+            is_italic = style[4]  # Курсив (5 колонка)
+            if is_italic == "True":
+                is_italic = True
+            else:
+                is_italic = False
+            is_underline = style[5]  # Подчеркивание (6 колонка)
+            if is_underline == "True":
+                is_underline = True
+            else:
+                is_underline = False
+            line_spacing = style[6]  # Межстрочный интервал (7 колонка)
+            font_color = style[7]  # Цвет (8 колонка)
+
+            format = QtGui.QTextCharFormat()
+            format.setForeground(QtGui.QColor(font_color))
+            self.merge_format_on_word_or_selection(format)
+
+            self.size_interval.setCurrentText(line_spacing)
+            self.font.setCurrentText(font_family)
+            self.font_size.setCurrentText(font_size)
+
+            self.update_font()
+            self.update_line_spacing()
+            self.update_font_size()
+
+            self.bold_active = not is_bold
+            self.italic_active = not is_italic
+            self.underlined_active = not is_underline
+
+            self.toggle_bold()
+            self.toggle_italic()
+            self.toggle_underlined()
+        conn.close()
 
     def set_page_margins(self):
         page_format = QTextFrameFormat()
@@ -422,6 +479,11 @@ class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
             return
         self.current_index = (self.current_index - 1) % len(self.found_positions)
         self.highlight_current_word()
+    def closeEvent(self, event):
+        self.lineEdit_search.clear()
+        self.checkBox_entirely.setChecked(False)
+        self.checkBox_register.setChecked(False)
+        event.accept()  # Принять событие закрытия
 
 
 class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
@@ -455,6 +517,7 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
         self.text_edit.setPlainText(new_text)
 
         self.show_message(f"Все вхождения '{word_to_replace}' заменены на '{replacement_word}'.")
+        self.close()
 
     # Метод для отображения сообщения в диалоговом окне
     def show_message(self, message):
@@ -462,8 +525,16 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
         msg_box.setText(message)
         msg_box.exec_()
 
+    def closeEvent(self, event):
+        self.lineEdit_replace.clear()
+        self.lineEdit_search2.clear()
+        self.checkBox_entirely.setChecked(False)
+        self.checkBox_register.setChecked(False)
+        event.accept()  # Принять событие закрытия
+
 
 class StyleWindow(QtWidgets.QWidget, Ui_Form):
+    style_selected = QtCore.pyqtSignal(str)  # Сигнал для передачи выбранного стиля
     def __init__(self):
         super().__init__()
         self.setupUi(self)
@@ -471,8 +542,55 @@ class StyleWindow(QtWidgets.QWidget, Ui_Form):
         self.new_style_window = NewStyleWindow()
         self.new_style.clicked.connect(self.open_new_style_window)
 
+        self.conn = sqlite3.connect('text_processor.db')
+        self.cur = self.conn.cursor()
+
+        # Создаем контейнер для радиокнопок
+        self.radio_container = QWidget()
+        self.radio_layout = QVBoxLayout(self.radio_container)
+        self.scrollArea.setWidget(self.radio_container)
+
+        # Инициализация ScrollArea
+        self.scrollArea.setWidgetResizable(True)
+        self.save.clicked.connect(self.save_style)
+
+    def save_style(self):
+        # Получаем выбранный стиль
+        selected_style = None
+        for i in range(self.radio_layout.count()):
+            radio_button = self.radio_layout.itemAt(i).widget()
+            if radio_button and radio_button.isChecked():
+                selected_style = radio_button.text()
+                break
+
+        if selected_style:
+            # Отправляем сигнал с выбранным стилем
+            self.style_selected.emit(selected_style)
+            self.close()  # Закрываем окно стилизации
+
+    def showEvent(self, event):
+        self.update_scroll_area()
+        super().showEvent(event)
+
+    def update_scroll_area(self):
+        # Очистить существующие элементы в layout
+        for i in reversed(range(self.radio_layout.count())):
+            widget = self.radio_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # Получаем новые данные из базы данных
+        self.cur.execute("SELECT name FROM styles")
+        styles = self.cur.fetchall()
+
+        # Добавляем радиокнопки в контейнер
+        for style in styles:
+            radio_button = QRadioButton(style[0])  # Получаем имя стиля из кортежа
+            self.radio_layout.addWidget(radio_button)
+
     def open_new_style_window(self):
         self.new_style_window.show()
+        self.close()
 
 
 class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
@@ -483,6 +601,9 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
         self.italic_active = False
         self.underlined_active = False
         self.current_text_color = QtGui.QColor('black')  # Изначальный цвет текста
+        format = QtGui.QTextCharFormat()
+        format.setForeground(self.current_text_color)
+        self.merge_format_on_word_or_selection(format)
         self.text_color.clicked.connect(self.change_text_color)
         self.font.currentFontChanged.connect(self.update_font)
         self.font_size.currentIndexChanged.connect(self.update_font_size)
@@ -500,6 +621,7 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
         self.indent_value = 0
         self.reduce_indentation.clicked.connect(self.update_indent)
         self.increase_indentation.clicked.connect(self.update_indent)
+        self.esc.clicked.connect(self.closing)
 
     # Новый метод для сохранения стиля
     def save_style(self):
@@ -607,27 +729,46 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
         msg_box.exec_()
 
     def add_row(self, name, shrift, pt, bold, italic, underlined, interval, color):
-        print(
-            f"Style Name: {name}, Font: {shrift}, Size: {pt}, Color: {color}, Spacing: {interval}, Bold: {bold}, Italic: {italic}, Underlined: {underlined}")
-
         self.conn = sqlite3.connect("text_processor.db")
         if name != '':
             try:
                 cur = self.conn.cursor()
                 a = f"""INSERT INTO styles(name, shrift, pt, bold, italic, underlined, interval, color) 
-                VALUES("{name}", "{shrift}", {pt}, "{bold}", "{italic}", "{underlined}", {interval}, "{color}" )"""
+                VALUES("{name}", "{shrift}", "{pt}", "{bold}", "{italic}", "{underlined}", "{interval}", "{color}" )"""
                 cur.execute(a)
                 self.conn.commit()
                 cur.close()
 
                 self.show_message("Успешное добавление стиля")
 
+                self.closing()
+
             except Exception as e:
                 self.show_message("не добавлено")
                 print(e)
         else:
             self.show_message("Придумайте название стиля")
-
+    def closing(self):
+        self.text_edit.clear()
+        self.style_name.clear()
+        self.current_text_color = QtGui.QColor('black')
+        format = QtGui.QTextCharFormat()
+        format.setForeground(self.current_text_color)
+        self.text_color.setStyleSheet(f'background-color: none')
+        self.bold_active = False
+        self.italic_active = False
+        self.underlined_active = False
+        self.bold.setStyleSheet('background-color: none')
+        format.setFontWeight(QtGui.QFont.Normal)
+        self.italic.setStyleSheet('background-color: none')
+        format.setFontItalic(self.italic_active)
+        self.underlined.setStyleSheet('background-color: none')
+        format.setFontUnderline(self.underlined_active)
+        self.merge_format_on_word_or_selection(format)
+        self.line_spacing.setCurrentText("1.0")
+        self.font.setCurrentText("Academy Engraved LET")
+        self.font_size.setCurrentText("8")
+        self.close()
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
