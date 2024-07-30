@@ -59,6 +59,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
         self.ignore_modifications = False
 
+        self.style_window.style_selected.connect(self.apply_style)  # Соединяем сигнал со слотом
+
     def closeEvent(self, event):
         if self.text_edit.document().isModified():
             unsaved_warning_message = ("У вас есть несохраненные данные. Они будут утеряны при закрытии программы. "
