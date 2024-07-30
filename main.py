@@ -19,11 +19,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.search_window = SearchWindow(self.text_edit)
         self.replace_window = ReplaceWindow(self.text_edit)
         self.style_window = StyleWindow()
+
         self.search.clicked.connect(self.open_search_window)
         self.replace.clicked.connect(self.open_replace_window)
         self.style.clicked.connect(self.open_style_window)
         self.text_color.clicked.connect(self.change_text_color)
-        self.save.clicked.connect(self.save_as_pdf)
+        self.save.clicked.connect(self.save_document)
+        self.upload.clicked.connect(self.open_html_file)
 
         self.bold_active = False
         self.italic_active = False
@@ -54,6 +56,151 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.load_page_content()
 
         self.set_page_margins()
+
+        self.ignore_modifications = False
+
+    def closeEvent(self, event):
+        if self.text_edit.document().isModified():
+            unsaved_warning_message = "У вас есть несохраненные данные. Они будут утеряны при закрытии программы. Хотите сохранить изменения?"
+            message_box = QMessageBox()
+            message_box.setIcon(QMessageBox.Warning)
+            message_box.setWindowTitle("Предупреждение")
+            message_box.setText(unsaved_warning_message)
+            save_button = message_box.addButton("Сохранить", QMessageBox.AcceptRole)
+            discard_button = message_box.addButton("Не сохранять", QMessageBox.DestructiveRole)
+            message_box.setDefaultButton(save_button)
+
+            message_box.exec_()
+
+            if message_box.clickedButton() == save_button:
+                self.save_document()
+                event.accept()
+            elif message_box.clickedButton() == discard_button:
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.accept()
+
+    def save_document(self):
+        warning_message = (
+            "Если вы хотите в дальнейшем редактировать файл, сохраните его в формате HTML.\n"
+            "Если вы хотите просматривать готовый документ, сохраните его в формате PDF."
+        )
+        reply = QMessageBox.warning(
+            self,
+            "Предупреждение",
+            warning_message,
+            QMessageBox.Ok
+        )
+
+        if reply == QMessageBox.Cancel:
+            return
+
+        self.page_contents[self.current_page] = self.text_edit.toHtml()
+
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "HTML Files (*.html);;PDF Files (*.pdf)", options=options)
+
+        if file_path:
+            if file_path.endswith('.pdf'):
+                self.save_as_pdf(file_path)
+            elif file_path.endswith('.html'):
+                self.save_as_html(file_path)
+
+    def save_as_pdf(self, file_path):
+        try:
+            printer = QPrinter(QPrinter.HighResolution)
+            printer.setOutputFormat(QPrinter.PdfFormat)
+            printer.setOutputFileName(file_path)
+
+            final_document = QTextDocument()
+
+            full_html = "<html><body>"
+            for page in sorted(self.page_contents.keys()):
+                text = self.page_contents.get(page, "")
+                if page != min(self.page_contents.keys()):
+                    full_html += "<div style='page-break-before:always;'></div>"
+                full_html += f"<div>{text}</div>"
+
+            full_html += "</body></html>"
+
+            final_document.setHtml(full_html)
+            final_document.print_(printer)
+
+            self.text_edit.document().setModified(False)
+
+            QMessageBox.information(self, "Сохранение завершено", f"Документ сохранен по пути {file_path}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка сохранения", f"Произошла ошибка при сохранении PDF: {str(e)}")
+
+    def save_as_html(self, file_path):
+        try:
+            full_html = "<html><body>"
+            for page in sorted(self.page_contents.keys()):
+                text = self.page_contents.get(page, "")
+                if page != min(self.page_contents.keys()):
+                    full_html += "<div style='page-break-before:always;'></div>"
+                full_html += f"<div>{text}</div>"
+            full_html += "</body></html>"
+
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(full_html)
+
+            self.text_edit.document().setModified(False)
+
+            QMessageBox.information(self, "Сохранение завершено", f"Документ сохранен по пути {file_path}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка сохранения", f"Произошла ошибка при сохранении HTML: {str(e)}")
+
+    def open_html_file(self):
+        if not self.text_edit.document().isEmpty() and self.text_edit.document().isModified():
+            unsaved_warning_message = "У вас есть несохраненные данные. Они будут утеряны при открытии нового файла. Продолжить?"
+            reply = QMessageBox.warning(
+                self,
+                "Предупреждение",
+                unsaved_warning_message,
+                QMessageBox.Ok
+            )
+
+            if reply == QMessageBox.Cancel:
+                return
+
+        self.page_contents[self.current_page] = self.text_edit.toHtml()
+
+        self.current_page = 1
+        self.pages.setValue(1)
+
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getOpenFileName(self, "Открыть файл", "", "HTML Files (*.html);;All Files (*)", options=options)
+
+        if file_path:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    html_content = file.read()
+
+                self.page_contents.clear()
+                self.text_edit.clear()
+
+                pages = html_content.split("<div style='page-break-before:always;'></div>")
+                self.page_contents = {i + 1: page for i, page in enumerate(pages)}
+
+                self.current_page = 1
+                self.pages.setMinimum(1)
+                self.pages.setMaximum(len(self.page_contents))
+                self.pages.setValue(1)
+                self.ignore_modifications = True
+                self.load_page_content()
+                self.ignore_modifications = False
+
+                self.text_edit.document().setModified(False)
+
+                QMessageBox.information(self, "Загрузка завершена", f"Документ успешно загружен из {file_path}")
+
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка загрузки", f"Произошла ошибка при загрузке HTML: {str(e)}")
 
     def set_page_margins(self):
         page_format = QTextFrameFormat()
@@ -124,8 +271,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
     def toggle_underlined(self):
         self.underlined_active = not self.underlined_active
-        self.underlined.setStyleSheet(
-            'background-color: lightblue' if self.underlined_active else 'background-color: none')
+        self.underlined.setStyleSheet('background-color: lightblue' if self.underlined_active else 'background-color: none')
         format = QtGui.QTextCharFormat()
         format.setFontUnderline(self.underlined_active)
         self.merge_format_on_word_or_selection(format)
@@ -136,8 +282,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
             format = QtGui.QTextCharFormat()
             format.setForeground(color)
             self.merge_format_on_word_or_selection(format)
-            self.text_color.setStyleSheet(
-                f'background-color: {color.name()}' if color != QtGui.QColor('black') else 'background-color: none')
+            self.text_color.setStyleSheet(f'background-color: {color.name()}' if color != QtGui.QColor('black') else 'background-color: none')
 
     def merge_format_on_word_or_selection(self, format):
         cursor = self.text_edit.textCursor()
@@ -153,49 +298,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         format.setFontUnderline(self.underlined_active)
         self.text_edit.setCurrentCharFormat(format)
 
-    def save_as_pdf(self):
-        self.page_contents[self.current_page] = self.text_edit.toHtml()
-
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "PDF Files (*.pdf)")
-        if file_path:
-            try:
-                printer = QPrinter(QPrinter.HighResolution)
-                printer.setOutputFormat(QPrinter.PdfFormat)
-                printer.setOutputFileName(file_path)
-
-                final_document = QTextDocument()
-
-                full_html = "<html><body>"
-                for page in sorted(self.page_contents.keys()):
-                    text = self.page_contents.get(page, "")
-                    if page != min(self.page_contents.keys()):
-                        full_html += "<div style='page-break-before:always;'></div>"
-                    full_html += f"<div>{text}</div>"
-
-                full_html += "</body></html>"
-
-                final_document.setHtml(full_html)
-                final_document.print_(printer)
-                QMessageBox.information(self, "Сохранение завершено", f"Документ сохранен по пути {file_path}")
-
-            except Exception as e:
-                QMessageBox.critical(self, "Ошибка сохранения", f"Произошла ошибка при сохранении PDF: {str(e)}")
-
     def change_page(self):
         self.page_contents[self.current_page] = self.text_edit.toHtml()
 
         self.current_page = self.pages.value()
+
+        self.ignore_modifications = True
         self.load_page_content()
+        self.ignore_modifications = False
 
     def load_page_content(self):
         text = self.page_contents.get(self.current_page, "")
         self.text_edit.setHtml(text)
         self.set_page_margins()
+        self.text_edit.document().setModified(False)
 
     def insert_image(self):
         options = QFileDialog.Options()
-        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "",
-                                                   "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
+        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "", "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
         if file_name:
             try:
                 cursor = self.text_edit.textCursor()
@@ -212,8 +332,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
                 default_height = pixmap.height()
                 width, ok = QInputDialog.getInt(self, "Ширина изображения", "Введите ширину:", default_width, 1, 3000)
                 if ok:
-                    height, ok = QInputDialog.getInt(self, "Высота изображения", "Введите высоту:", default_height, 1,
-                                                     3000)
+                    height, ok = QInputDialog.getInt(self, "Высота изображения", "Введите высоту:", default_height, 1, 3000)
                     if ok:
                         image_format.setWidth(width)
                         image_format.setHeight(height)
