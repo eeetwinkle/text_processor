@@ -1,52 +1,86 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QTextEdit,
-                             QPushButton, QFileDialog, QInputDialog, QApplication)
-from PyQt5.QtGui import QTextCursor, QTextImageFormat, QPixmap
+import sys
+import webbrowser
+from PyQt5.QtWidgets import QApplication, QTextEdit, QPushButton, QVBoxLayout, QWidget, QInputDialog, QMessageBox
+from PyQt5.QtGui import QTextCursor, QTextCharFormat
+from PyQt5.QtCore import Qt, QUrl
 
 
-class TextEditorWithResizableImages(QWidget):
+class TextEditor(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Текстовый редактор с изменяемыми изображениями")
-        self.setGeometry(100, 100, 600, 400)
 
-        layout = QVBoxLayout(self)
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle('Текстовый редактор с гиперссылками')
 
         self.text_edit = QTextEdit(self)
-        layout.addWidget(self.text_edit)
+        self.text_edit.setAcceptRichText(True)  # Позволяет использовать HTML-теги
 
-        self.insert_image_button = QPushButton("Вставить изображение", self)
-        self.insert_image_button.clicked.connect(self.insert_image)
-        layout.addWidget(self.insert_image_button)
+        self.add_link_button = QPushButton('Добавить ссылку', self)
+        self.add_link_button.clicked.connect(self.add_link)
+
+        #self.open_link_button = QPushButton('Открыть ссылку', self)
+        #self.open_link_button.clicked.connect(self.open_link)
+        #self.open_link_button.setEnabled(False)  # Изначально кнопка отключена
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.text_edit)
+        layout.addWidget(self.add_link_button)
+        #layout.addWidget(self.open_link_button)
 
         self.setLayout(layout)
 
-    def insert_image(self):
-        """Метод для вставки изображения в текстовый редактор."""
-        options = QFileDialog.Options()
-        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "",
-                                                     "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
-        if file_name:
-            cursor = self.text_edit.textCursor()
-            image_format = QTextImageFormat()
-            image_format.setName(file_name)
+        # Подключим изменение текста к проверке состояния кнопки
+        self.text_edit.selectionChanged.connect(self.update_open_link)
 
-            # Запрашиваем размер у пользователя
-            width, ok = QInputDialog.getInt(self, "Ширина изображения", "Введите ширину:", 100, 1, 3000)
-            if ok:
-                height, ok = QInputDialog.getInt(self, "Высота изображения", "Введите высоту:", 100, 1, 3000)
-                if ok:
-                    image_format.setWidth(width)
-                    image_format.setHeight(height)
+        self.show()
 
-                    cursor.insertImage(image_format)
+    def add_link(self):
+        link_text, ok1 = QInputDialog.getText(self, 'Текст ссылки', 'Введите текст для ссылки:')
+        if ok1 and link_text:
+            url, ok2 = QInputDialog.getText(self, 'URL ссылки',
+                                            'Введите URL для ссылки (например, http://example.com):')
+            if ok2 and url:
+                cursor = self.text_edit.textCursor()
+
+                # Вставляем текст ссылки с гиперссылкой
+                cursor.insertHtml(f'<a href="{url}">{link_text}</a> ')
+
+                # Устанавливаем курсор в конец текста
+                self.text_edit.setTextCursor(cursor)
+
+    def update_open_link(self):
+        cursor = self.text_edit.textCursor()
+        selected_text = cursor.selectedText()  # Получаем выделенный текст
+        # Проверяем, является ли выделенный текст гиперссылкой
+        if self.is_link_selected(cursor) == True:
+            self.open_link()
+
+    def open_link(self):
+        cursor = self.text_edit.textCursor()
+        if self.is_link_selected(cursor):
+            link_format = cursor.charFormat()
+            url = link_format.anchorHref()
+            if url:
+                self.show_link_dialog(url)  # Открываем диалог для перехода по ссылке
+
+    def show_link_dialog(self, url):
+        reply = QMessageBox.question(self, 'Переход по ссылке', f'Хотите перейти по ссылке: {url}?',
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            webbrowser.open(QUrl(url).toString())  # Открываем ссылку в браузере
+
+    def is_link_selected(self, cursor):
+        # Проверка, является ли выделенный текст гиперссылкой
+        cursor.select(QTextCursor.WordUnderCursor)
+        link_format = cursor.charFormat()
+        return link_format.isAnchor()  # Проверка является ли текст анкором (гиперссылкой)
 
 
 if __name__ == '__main__':
-    import sys
-
     app = QApplication(sys.argv)
-    editor = TextEditorWithResizableImages()
-    editor.show()
+    editor = TextEditor()
     sys.exit(app.exec_())
 
 
