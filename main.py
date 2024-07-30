@@ -67,6 +67,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.link.clicked.connect(self.add_link)
         self.text_edit.selectionChanged.connect(self.update_open_link)
 
+        self.current_text_color = QtGui.QColor('black')  # Изначальный цвет текста
+        format = QtGui.QTextCharFormat()
+        format.setForeground(self.current_text_color)
+        self.merge_format_on_word_or_selection(format)
+
     def closeEvent(self, event):
         if self.text_edit.document().isModified():
             unsaved_warning_message = ("У вас есть несохраненные данные. Они будут утеряны при закрытии программы. "
@@ -348,6 +353,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
     def change_text_color(self):
         color = QColorDialog.getColor()
         if color.isValid():
+            self.current_text_color = color
             format = QtGui.QTextCharFormat()
             format.setForeground(color)
             self.merge_format_on_word_or_selection(format)
@@ -425,6 +431,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
                 # Устанавливаем курсор в конец текста
                 self.text_edit.setTextCursor(cursor)
+
+                self.update_font()
+                self.update_line_spacing()
+                self.update_font_size()
+
+                self.bold_active = not self.bold_active
+                self.italic_active = not self.italic_active
+                self.underlined_active = not self.underlined_active
+
+                self.toggle_bold()
+                self.toggle_italic()
+                self.toggle_underlined()
+
+                self.current_text_color = self.current_text_color
+                format = QtGui.QTextCharFormat()
+                format.setForeground(self.current_text_color)
+                self.merge_format_on_word_or_selection(format)
 
     def update_open_link(self):
         cursor = self.text_edit.textCursor()
