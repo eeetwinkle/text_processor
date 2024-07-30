@@ -190,6 +190,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
     def load_page_content(self):
         text = self.page_contents.get(self.current_page, "")
         self.text_edit.setHtml(text)
+        self.set_page_margins()
 
     def insert_image(self):
         options = QFileDialog.Options()
