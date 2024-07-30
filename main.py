@@ -244,6 +244,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
             format = QtGui.QTextCharFormat()
             format.setForeground(QtGui.QColor(font_color))
             self.merge_format_on_word_or_selection(format)
+            self.text_color.setStyleSheet(f'background-color: {font_color}' if font_color != QtGui.QColor('black')
+                                          else 'background-color: none')
 
             self.size_interval.setCurrentText(line_spacing)
             self.font.setCurrentText(font_family)
