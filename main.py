@@ -72,6 +72,35 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         format.setForeground(self.current_text_color)
         self.merge_format_on_word_or_selection(format)
 
+        self.text_edit.textChanged.connect(self.on_text_changed)
+
+    def on_text_changed(self):
+        text = self.text_edit.toPlainText()
+
+        # Отключаем сигнал для предотвращения рекурсии
+        self.text_edit.textChanged.disconnect(self.on_text_changed)
+
+        # Проверяем, является ли текст пустым
+        if not text:
+            self.update_font()
+            self.update_line_spacing()
+            self.update_font_size()
+
+            self.bold_active = not self.bold_active
+            self.italic_active = not self.italic_active
+            self.underlined_active = not self.underlined_active
+
+            self.toggle_bold()
+            self.toggle_italic()
+            self.toggle_underlined()
+
+            self.current_text_color = self.current_text_color
+            format = QtGui.QTextCharFormat()
+            format.setForeground(self.current_text_color)
+            self.merge_format_on_word_or_selection(format)
+
+        self.text_edit.textChanged.connect(self.on_text_changed)
+
     def closeEvent(self, event):
         if self.text_edit.document().isModified():
             unsaved_warning_message = ("У вас есть несохраненные данные. Они будут утеряны при закрытии программы. "
