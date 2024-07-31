@@ -415,6 +415,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
                         image_format.setWidth(width)
                         image_format.setHeight(height)
                         cursor.insertImage(image_format)
+                        self.update_font()
+                        self.update_line_spacing()
+                        self.update_font_size()
+
+                        self.bold_active = not self.bold_active
+                        self.italic_active = not self.italic_active
+                        self.underlined_active = not self.underlined_active
+
+                        self.toggle_bold()
+                        self.toggle_italic()
+                        self.toggle_underlined()
+
+                        self.current_text_color = self.current_text_color
+                        format = QtGui.QTextCharFormat()
+                        format.setForeground(self.current_text_color)
+                        self.merge_format_on_word_or_selection(format)
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка", f"Не удалось вставить изображение: {str(e)}")
 
