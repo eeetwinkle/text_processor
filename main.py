@@ -4,7 +4,7 @@ import sqlite3
 import webbrowser
 
 from PyQt5 import QtWidgets, QtGui, QtCore
-from PyQt5.QtCore import QUrl
+from PyQt5.QtCore import QUrl, QEvent, Qt
 from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat, QPixmap, QTextDocument, QTextFrameFormat
 from PyQt5.QtWidgets import QColorDialog, QFileDialog, QMessageBox, QInputDialog, QWidget, QVBoxLayout, QRadioButton
 from PyQt5.QtPrintSupport import QPrinter
