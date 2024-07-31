@@ -5,7 +5,7 @@ import webbrowser
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import QUrl, QEvent, Qt
-from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat, QPixmap, QTextDocument, QTextFrameFormat
+from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat, QPixmap, QTextDocument, QTextFrameFormat, QFont
 from PyQt5.QtWidgets import QColorDialog, QFileDialog, QMessageBox, QInputDialog, QWidget, QVBoxLayout, QRadioButton
 from PyQt5.QtPrintSupport import QPrinter
 from QtMainWindow import Ui_color
@@ -289,7 +289,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
                                           else 'background-color: none')
 
             self.size_interval.setCurrentText(line_spacing)
-            self.font.setCurrentText(font_family)
+            font = QFont(font_family)
+            self.font.setCurrentFont(font)
+
             self.font_size.setCurrentText(font_size)
 
             self.update_font()
@@ -747,6 +749,35 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
         self.reduce_indentation.clicked.connect(self.update_indent)
         self.increase_indentation.clicked.connect(self.update_indent)
         self.esc.clicked.connect(self.closing)
+
+        self.text_edit.textChanged.connect(self.on_text_changed)
+
+    def on_text_changed(self):
+        text = self.text_edit.toPlainText()
+
+        # Отключаем сигнал для предотвращения рекурсии
+        self.text_edit.textChanged.disconnect(self.on_text_changed)
+
+        # Проверяем, является ли текст пустым
+        if not text:
+            self.update_font()
+            self.update_line_spacing()
+            self.update_font_size()
+
+            self.bold_active = not self.bold_active
+            self.italic_active = not self.italic_active
+            self.underlined_active = not self.underlined_active
+
+            self.toggle_bold()
+            self.toggle_italic()
+            self.toggle_underlined()
+
+            self.current_text_color = self.current_text_color
+            format = QtGui.QTextCharFormat()
+            format.setForeground(self.current_text_color)
+            self.merge_format_on_word_or_selection(format)
+
+        self.text_edit.textChanged.connect(self.on_text_changed)
 
     # Новый метод для сохранения стиля
     def save_style(self):
