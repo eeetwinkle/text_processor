@@ -4,10 +4,11 @@ import sqlite3
 import webbrowser
 
 from PyQt5 import QtWidgets, QtGui, QtCore
-from PyQt5.QtCore import QUrl, QEvent, Qt
+from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QTextCursor, QTextBlockFormat, QTextImageFormat, QPixmap, QTextDocument, QTextFrameFormat, QFont
 from PyQt5.QtWidgets import QColorDialog, QFileDialog, QMessageBox, QInputDialog, QWidget, QVBoxLayout, QRadioButton
 from PyQt5.QtPrintSupport import QPrinter
+
 from QtMainWindow import Ui_color
 from QtSearchWindow import Ui_QtSearchWindow
 from QtReplaceWindow import Ui_QtReplaceWindow
@@ -19,6 +20,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+        self.setWindowTitle("Текстовый редактор")
         self.search_window = SearchWindow(self.text_edit)
         self.replace_window = ReplaceWindow(self.text_edit)
         self.style_window = StyleWindow()
@@ -29,101 +31,44 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.text_color.clicked.connect(self.change_text_color)
         self.save.clicked.connect(self.save_document)
         self.upload.clicked.connect(self.open_html_file)
-
-        self.bold_active = False
-        self.italic_active = False
-        self.underlined_active = False
-
+        self.bold.clicked.connect(self.toggle_bold)
+        self.italic.clicked.connect(self.toggle_italic)
+        self.underlined.clicked.connect(self.toggle_underlined)
         self.font.currentFontChanged.connect(self.update_font)
         self.font_size.currentIndexChanged.connect(self.update_font_size)
         self.size_interval.currentIndexChanged.connect(self.update_line_spacing)
         self.pages.valueChanged.connect(self.change_page)
-
-        self.bold.clicked.connect(self.toggle_bold)
-        self.italic.clicked.connect(self.toggle_italic)
-        self.underlined.clicked.connect(self.toggle_underlined)
-
-        self.update_font()
-        self.update_font_size()
-
-        self.indent_value = 0
         self.reduce_indentation.clicked.connect(self.update_indent)
         self.increase_indentation.clicked.connect(self.update_indent)
-
         self.paste.clicked.connect(self.insert_image)
+        self.link.clicked.connect(self.add_link)
+        self.text_edit.selectionChanged.connect(self.update_open_link)
+        self.text_edit.textChanged.connect(self.on_text_changed)
+        self.style_window.style_selected.connect(self.apply_style)
 
+        self.bold_active = False
+        self.italic_active = False
+        self.underlined_active = False
+        self.current_text_color = QtGui.QColor('black')
         self.page_contents = {}
         self.current_page = 1
         self.pages.setMinimum(1)
         self.pages.setValue(1)
-        self.load_page_content()
-
-        self.set_page_margins()
-
         self.ignore_modifications = False
 
-        self.style_window.style_selected.connect(self.apply_style)  # Соединяем сигнал со слотом
+        self.update_font()
+        self.update_font_size()
+        self.load_page_content()
+        self.set_page_margins()
 
-        self.link.clicked.connect(self.add_link)
-        self.text_edit.selectionChanged.connect(self.update_open_link)
+    def open_search_window(self):
+        self.search_window.show()
 
-        self.current_text_color = QtGui.QColor('black')  # Изначальный цвет текста
-        format = QtGui.QTextCharFormat()
-        format.setForeground(self.current_text_color)
-        self.merge_format_on_word_or_selection(format)
+    def open_replace_window(self):
+        self.replace_window.show()
 
-        self.text_edit.textChanged.connect(self.on_text_changed)
-
-    def on_text_changed(self):
-        text = self.text_edit.toPlainText()
-
-        # Отключаем сигнал для предотвращения рекурсии
-        self.text_edit.textChanged.disconnect(self.on_text_changed)
-
-        # Проверяем, является ли текст пустым
-        if not text:
-            self.update_font()
-            self.update_line_spacing()
-            self.update_font_size()
-
-            self.bold_active = not self.bold_active
-            self.italic_active = not self.italic_active
-            self.underlined_active = not self.underlined_active
-
-            self.toggle_bold()
-            self.toggle_italic()
-            self.toggle_underlined()
-
-            self.current_text_color = self.current_text_color
-            format = QtGui.QTextCharFormat()
-            format.setForeground(self.current_text_color)
-            self.merge_format_on_word_or_selection(format)
-
-        self.text_edit.textChanged.connect(self.on_text_changed)
-
-    def closeEvent(self, event):
-        if self.text_edit.document().isModified():
-            unsaved_warning_message = ("У вас есть несохраненные данные. Они будут утеряны при закрытии программы. "
-                                       "Хотите сохранить изменения?")
-            message_box = QMessageBox()
-            message_box.setIcon(QMessageBox.Warning)
-            message_box.setWindowTitle("Предупреждение")
-            message_box.setText(unsaved_warning_message)
-            save_button = message_box.addButton("Сохранить", QMessageBox.AcceptRole)
-            discard_button = message_box.addButton("Не сохранять", QMessageBox.DestructiveRole)
-            message_box.setDefaultButton(save_button)
-
-            message_box.exec_()
-
-            if message_box.clickedButton() == save_button:
-                self.save_document()
-                event.accept()
-            elif message_box.clickedButton() == discard_button:
-                event.accept()
-            else:
-                event.ignore()
-        else:
-            event.accept()
+    def open_style_window(self):
+        self.style_window.show()
 
     def save_document(self):
         warning_message = (
@@ -251,38 +196,58 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка загрузки", f"Произошла ошибка при загрузке HTML: {str(e)}")
 
-        self.style_window.style_selected.connect(self.apply_style)  # Соединяем сигнал со слотом
+    def on_text_changed(self):
+        text = self.text_edit.toPlainText()
+
+        self.text_edit.textChanged.disconnect(self.on_text_changed)
+
+        if not text:
+            self.update_font()
+            self.update_line_spacing()
+            self.update_font_size()
+
+            self.bold_active = not self.bold_active
+            self.italic_active = not self.italic_active
+            self.underlined_active = not self.underlined_active
+
+            self.toggle_bold()
+            self.toggle_italic()
+            self.toggle_underlined()
+
+            self.current_text_color = self.current_text_color
+            format = QtGui.QTextCharFormat()
+            format.setForeground(self.current_text_color)
+            self.merge_format_on_word_or_selection(format)
+
+        self.text_edit.textChanged.connect(self.on_text_changed)
 
     def apply_style(self, style_name):
-        # Подключаемся к базе данных и применяем стиль
         conn = sqlite3.connect('text_processor.db')
         cur = conn.cursor()
 
-        # Запрос для получения параметров стиля
         cur.execute("SELECT * FROM styles WHERE name = ?", (style_name,))
         style = cur.fetchone()
 
         if style:
-            # Примените стиль к тексту
-            font_family = style[1]  # Шрифт (2 колонка)
-            font_size = style[2]  # Размер шрифта (3 колонка)
-            is_bold = style[3]  # Жирный шрифт (4 колонка)
+            font_family = style[1]
+            font_size = style[2]
+            is_bold = style[3]
             if is_bold == "True":
                 is_bold = True
             else:
                 is_bold = False
-            is_italic = style[4]  # Курсив (5 колонка)
+            is_italic = style[4]
             if is_italic == "True":
                 is_italic = True
             else:
                 is_italic = False
-            is_underline = style[5]  # Подчеркивание (6 колонка)
+            is_underline = style[5]
             if is_underline == "True":
                 is_underline = True
             else:
                 is_underline = False
-            line_spacing = style[6]  # Межстрочный интервал (7 колонка)
-            font_color = style[7]  # Цвет (8 колонка)
+            line_spacing = style[6]
+            font_color = style[7]
 
             format = QtGui.QTextCharFormat()
             format.setForeground(QtGui.QColor(font_color))
@@ -310,39 +275,126 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
             self.toggle_underlined()
         conn.close()
 
-    def set_page_margins(self):
-        page_format = QTextFrameFormat()
-        page_format.setLeftMargin(50)
-        page_format.setRightMargin(50)
-        page_format.setTopMargin(50)
-        page_format.setBottomMargin(50)
-        self.text_edit.document().rootFrame().setFrameFormat(page_format)
+    def change_text_color(self):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            self.current_text_color = color
+            format = QtGui.QTextCharFormat()
+            format.setForeground(color)
+            self.merge_format_on_word_or_selection(format)
+            self.text_color.setStyleSheet(f'background-color: {color.name()}' if color != QtGui.QColor('black')
+                                          else 'background-color: none')
 
-    def update_line_spacing(self):
-        value = self.size_interval.currentText()
-        try:
-            spacing = float(value)
-        except ValueError:
-            return
-
+    def merge_format_on_word_or_selection(self, format):
         cursor = self.text_edit.textCursor()
-        block_format = cursor.blockFormat()
-        block_format.setLineHeight(spacing * 100, QtGui.QTextBlockFormat.ProportionalHeight)
-        cursor.setBlockFormat(block_format)
-        self.text_edit.setTextCursor(cursor)
+        if not cursor.hasSelection():
+            cursor.select(QTextCursor.WordUnderCursor)
+        cursor.mergeCharFormat(format)
+        self.text_edit.mergeCurrentCharFormat(format)
 
-    def update_indent(self):
-        sender = self.sender()
-        if sender == self.increase_indentation:
-            self.indent_value += 1
-        elif self.indent_value > 0:
-            self.indent_value -= 1
-        block_format = QTextBlockFormat()
-        block_format.setIndent(self.indent_value)
+    def update_current_format(self):
+        format = self.text_edit.currentCharFormat()
+        format.setFontWeight(QtGui.QFont.Bold if self.bold_active else QtGui.QFont.Normal)
+        format.setFontItalic(self.italic_active)
+        format.setFontUnderline(self.underlined_active)
+        self.text_edit.setCurrentCharFormat(format)
+
+    def insert_image(self):
+        options = QFileDialog.Options()
+        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "",
+                                                   "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
+        if file_name:
+            try:
+                cursor = self.text_edit.textCursor()
+                image_format = QTextImageFormat()
+                image_format.setName(file_name)
+
+                pixmap = QPixmap(file_name)
+                if pixmap.isNull():
+                    raise ValueError("Изображение не может быть загружено.")
+
+                default_width = pixmap.width()
+                default_height = pixmap.height()
+                width, ok = QInputDialog.getInt(self, "Ширина изображения", "Введите ширину:", default_width, 1, 3000)
+                if ok:
+                    height, ok = QInputDialog.getInt(self, "Высота изображения", "Введите высоту:",
+                                                     default_height, 1, 3000)
+                    if ok:
+                        image_format.setWidth(width)
+                        image_format.setHeight(height)
+                        cursor.insertImage(image_format)
+                        self.update_font()
+                        self.update_line_spacing()
+                        self.update_font_size()
+
+                        self.bold_active = not self.bold_active
+                        self.italic_active = not self.italic_active
+                        self.underlined_active = not self.underlined_active
+
+                        self.toggle_bold()
+                        self.toggle_italic()
+                        self.toggle_underlined()
+
+                        self.current_text_color = self.current_text_color
+                        format = QtGui.QTextCharFormat()
+                        format.setForeground(self.current_text_color)
+                        self.merge_format_on_word_or_selection(format)
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка", f"Не удалось вставить изображение: {str(e)}")
+
+    def add_link(self):
+        link_text, ok1 = QInputDialog.getText(self, 'Текст ссылки', 'Введите текст для ссылки:')
+        if ok1 and link_text:
+            url, ok2 = QInputDialog.getText(self, 'URL ссылки',
+                                            'Введите URL для ссылки (например, http://example.com):')
+            if ok2 and url:
+                cursor = self.text_edit.textCursor()
+
+                cursor.insertHtml(f'<a href="{url}">{link_text}</a> ')
+
+                self.text_edit.setTextCursor(cursor)
+
+                self.update_font()
+                self.update_line_spacing()
+                self.update_font_size()
+
+                self.bold_active = not self.bold_active
+                self.italic_active = not self.italic_active
+                self.underlined_active = not self.underlined_active
+
+                self.toggle_bold()
+                self.toggle_italic()
+                self.toggle_underlined()
+
+                self.current_text_color = self.current_text_color
+                format = QtGui.QTextCharFormat()
+                format.setForeground(self.current_text_color)
+                self.merge_format_on_word_or_selection(format)
+
+    def update_open_link(self):
         cursor = self.text_edit.textCursor()
-        cursor.select(QTextCursor.Document)
-        cursor.mergeBlockFormat(block_format)
-        self.text_edit.setTextCursor(cursor)
+        selected_text = cursor.selectedText()
+        if self.is_link_selected(cursor):
+            self.open_link()
+
+    def open_link(self):
+        cursor = self.text_edit.textCursor()
+        if self.is_link_selected(cursor):
+            link_format = cursor.charFormat()
+            url = link_format.anchorHref()
+            if url:
+                self.show_link_dialog(url)
+
+    def show_link_dialog(self, url):
+        reply = QMessageBox.question(self, 'Переход по ссылке', f'Хотите перейти по ссылке: {url}?',
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            webbrowser.open(QUrl(url).toString())
+
+    def is_link_selected(self, cursor):
+        cursor.select(QTextCursor.WordUnderCursor)
+        link_format = cursor.charFormat()
+        return link_format.isAnchor()
 
     def update_font(self, font=None):
         if font is None:
@@ -385,29 +437,39 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         format.setFontUnderline(self.underlined_active)
         self.merge_format_on_word_or_selection(format)
 
-    def change_text_color(self):
-        color = QColorDialog.getColor()
-        if color.isValid():
-            self.current_text_color = color
-            format = QtGui.QTextCharFormat()
-            format.setForeground(color)
-            self.merge_format_on_word_or_selection(format)
-            self.text_color.setStyleSheet(f'background-color: {color.name()}' if color != QtGui.QColor('black')
-                                          else 'background-color: none')
+    def update_line_spacing(self):
+        value = self.size_interval.currentText()
+        try:
+            spacing = float(value)
+        except ValueError:
+            return
 
-    def merge_format_on_word_or_selection(self, format):
         cursor = self.text_edit.textCursor()
-        if not cursor.hasSelection():
-            cursor.select(QTextCursor.WordUnderCursor)
-        cursor.mergeCharFormat(format)
-        self.text_edit.mergeCurrentCharFormat(format)
+        block_format = cursor.blockFormat()
+        block_format.setLineHeight(spacing * 100, QtGui.QTextBlockFormat.ProportionalHeight)
+        cursor.setBlockFormat(block_format)
+        self.text_edit.setTextCursor(cursor)
 
-    def update_current_format(self):
-        format = self.text_edit.currentCharFormat()
-        format.setFontWeight(QtGui.QFont.Bold if self.bold_active else QtGui.QFont.Normal)
-        format.setFontItalic(self.italic_active)
-        format.setFontUnderline(self.underlined_active)
-        self.text_edit.setCurrentCharFormat(format)
+    def update_indent(self):
+        sender = self.sender()
+        if sender == self.increase_indentation:
+            self.indent_value += 1
+        elif self.indent_value > 0:
+            self.indent_value -= 1
+        block_format = QTextBlockFormat()
+        block_format.setIndent(self.indent_value)
+        cursor = self.text_edit.textCursor()
+        cursor.select(QTextCursor.Document)
+        cursor.mergeBlockFormat(block_format)
+        self.text_edit.setTextCursor(cursor)
+
+    def set_page_margins(self):
+        page_format = QTextFrameFormat()
+        page_format.setLeftMargin(50)
+        page_format.setRightMargin(50)
+        page_format.setTopMargin(50)
+        page_format.setBottomMargin(50)
+        self.text_edit.document().rootFrame().setFrameFormat(page_format)
 
     def change_page(self):
         self.page_contents[self.current_page] = self.text_edit.toHtml()
@@ -424,117 +486,29 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.set_page_margins()
         self.text_edit.document().setModified(False)
 
-    def insert_image(self):
-        options = QFileDialog.Options()
-        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "",
-                                                   "Images (*.png *.xpm *.jpg *.jpeg);;All Files (*)", options=options)
-        if file_name:
-            try:
-                cursor = self.text_edit.textCursor()
-                image_format = QTextImageFormat()
-                image_format.setName(file_name)
+    def closeEvent(self, event):
+        if self.text_edit.document().isModified():
+            unsaved_warning_message = ("У вас есть несохраненные данные. Они будут утеряны при закрытии программы. "
+                                       "Хотите сохранить изменения?")
+            message_box = QMessageBox()
+            message_box.setIcon(QMessageBox.Warning)
+            message_box.setWindowTitle("Предупреждение")
+            message_box.setText(unsaved_warning_message)
+            save_button = message_box.addButton("Сохранить", QMessageBox.AcceptRole)
+            discard_button = message_box.addButton("Не сохранять", QMessageBox.DestructiveRole)
+            message_box.setDefaultButton(save_button)
 
-                # Получаем исходные размеры изображения
-                pixmap = QPixmap(file_name)
-                if pixmap.isNull():
-                    raise ValueError("Изображение не может быть загружено.")
+            message_box.exec_()
 
-                # Запрашиваем новые размеры у пользователя с предложением использовать исходные
-                default_width = pixmap.width()
-                default_height = pixmap.height()
-                width, ok = QInputDialog.getInt(self, "Ширина изображения", "Введите ширину:", default_width, 1, 3000)
-                if ok:
-                    height, ok = QInputDialog.getInt(self, "Высота изображения", "Введите высоту:",
-                                                     default_height, 1, 3000)
-                    if ok:
-                        image_format.setWidth(width)
-                        image_format.setHeight(height)
-                        cursor.insertImage(image_format)
-                        self.update_font()
-                        self.update_line_spacing()
-                        self.update_font_size()
-
-                        self.bold_active = not self.bold_active
-                        self.italic_active = not self.italic_active
-                        self.underlined_active = not self.underlined_active
-
-                        self.toggle_bold()
-                        self.toggle_italic()
-                        self.toggle_underlined()
-
-                        self.current_text_color = self.current_text_color
-                        format = QtGui.QTextCharFormat()
-                        format.setForeground(self.current_text_color)
-                        self.merge_format_on_word_or_selection(format)
-            except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось вставить изображение: {str(e)}")
-
-    def add_link(self):
-        link_text, ok1 = QInputDialog.getText(self, 'Текст ссылки', 'Введите текст для ссылки:')
-        if ok1 and link_text:
-            url, ok2 = QInputDialog.getText(self, 'URL ссылки',
-                                            'Введите URL для ссылки (например, http://example.com):')
-            if ok2 and url:
-                cursor = self.text_edit.textCursor()
-
-                # Вставляем текст ссылки с гиперссылкой
-                cursor.insertHtml(f'<a href="{url}">{link_text}</a> ')
-
-                # Устанавливаем курсор в конец текста
-                self.text_edit.setTextCursor(cursor)
-
-                self.update_font()
-                self.update_line_spacing()
-                self.update_font_size()
-
-                self.bold_active = not self.bold_active
-                self.italic_active = not self.italic_active
-                self.underlined_active = not self.underlined_active
-
-                self.toggle_bold()
-                self.toggle_italic()
-                self.toggle_underlined()
-
-                self.current_text_color = self.current_text_color
-                format = QtGui.QTextCharFormat()
-                format.setForeground(self.current_text_color)
-                self.merge_format_on_word_or_selection(format)
-
-    def update_open_link(self):
-        cursor = self.text_edit.textCursor()
-        selected_text = cursor.selectedText()  # Получаем выделенный текст
-        # Проверяем, является ли выделенный текст гиперссылкой
-        if self.is_link_selected(cursor) == True:
-            self.open_link()
-
-    def open_link(self):
-        cursor = self.text_edit.textCursor()
-        if self.is_link_selected(cursor):
-            link_format = cursor.charFormat()
-            url = link_format.anchorHref()
-            if url:
-                self.show_link_dialog(url)  # Открываем диалог для перехода по ссылке
-
-    def show_link_dialog(self, url):
-        reply = QMessageBox.question(self, 'Переход по ссылке', f'Хотите перейти по ссылке: {url}?',
-                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if reply == QMessageBox.Yes:
-            webbrowser.open(QUrl(url).toString())  # Открываем ссылку в браузере
-
-    def is_link_selected(self, cursor):
-        # Проверка, является ли выделенный текст гиперссылкой
-        cursor.select(QTextCursor.WordUnderCursor)
-        link_format = cursor.charFormat()
-        return link_format.isAnchor()  # Проверка является ли текст анкором (гиперссылкой)
-
-    def open_search_window(self):
-        self.search_window.show()
-
-    def open_replace_window(self):
-        self.replace_window.show()
-
-    def open_style_window(self):
-        self.style_window.show()
+            if message_box.clickedButton() == save_button:
+                self.save_document()
+                event.accept()
+            elif message_box.clickedButton() == discard_button:
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.accept()
 
 
 class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
@@ -542,17 +516,17 @@ class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
         super().__init__()
         self.text_edit = text_edit
         self.setupUi(self)
+        self.setWindowTitle("Поиск")
         self.pushButton_search.clicked.connect(self.perform_search)
         self.pushButton_search_2.clicked.connect(self.navigate_to_next)
         self.pushButton_search_3.clicked.connect(self.navigate_to_previous)
 
-    # Метод, выполняющий поиск по тексту
     def perform_search(self):
         search_text = self.lineEdit_search.text()
         if self.checkBox_register.isChecked():
             flags = 0
         else:
-            flags = re.IGNORECASE  # Учитываем регистр иначе
+            flags = re.IGNORECASE
 
         whole_word = self.checkBox_entirely.isChecked()
         pattern = search_text
@@ -565,16 +539,15 @@ class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
 
         if count == 0:
             self.show_message("Не найдено")
-            self.current_index = -1  # Сбрасываем индекс
+            self.current_index = -1
             self.clear_highlight()
         else:
             self.show_message(f"Найдено: {count} вхождений")
-            self.current_index = 0  # Сбрасываем индекс для первого вхождения
+            self.current_index = 0
             self.highlight_current_word()
 
-    # Метод для выделения текущего найденного слова
     def highlight_current_word(self):
-        self.clear_highlight()  # Сначала снимаем выделение
+        self.clear_highlight()
 
         if self.current_index >= 0 and self.current_index < len(self.found_positions):
             cursor = self.text_edit.textCursor()
@@ -584,36 +557,33 @@ class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
             self.text_edit.setTextCursor(cursor)
             self.text_edit.setFocus()
 
-    # Метод для снятия выделения
     def clear_highlight(self):
         cursor = self.text_edit.textCursor()
         cursor.clearSelection()
         self.text_edit.setTextCursor(cursor)
 
-    # Метод для отображения сообщения в диалоговом окне
     def show_message(self, message):
         msg_box = QMessageBox()
         msg_box.setText(message)
         msg_box.exec_()
 
-    # Навигация к следующему найденному слову
     def navigate_to_next(self):
         if not self.found_positions:
             return
         self.current_index = (self.current_index + 1) % len(self.found_positions)
         self.highlight_current_word()
 
-    # Навигация к предыдущему найденному слову
     def navigate_to_previous(self):
         if not self.found_positions:
             return
         self.current_index = (self.current_index - 1) % len(self.found_positions)
         self.highlight_current_word()
+
     def closeEvent(self, event):
         self.lineEdit_search.clear()
         self.checkBox_entirely.setChecked(False)
         self.checkBox_register.setChecked(False)
-        event.accept()  # Принять событие закрытия
+        event.accept()
 
 
 class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
@@ -621,6 +591,7 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
         super().__init__()
         self.text_edit = text_edit
         self.setupUi(self)
+        self.setWindowTitle("Заменить")
         self.pushButton_replace.clicked.connect(self.replace_all)
 
     def replace_all(self):
@@ -645,7 +616,6 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
         new_text = re.sub(pattern, replacement_word, text, flags=flags)
         self.text_edit.setPlainText(new_text)
 
-        # Восстанавливаем поля страницы после замены текста
         main_window.set_page_margins()
 
         self.show_message(f"Все вхождения '{word_to_replace}' заменены на '{replacement_word}'.")
@@ -665,10 +635,12 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
 
 
 class StyleWindow(QtWidgets.QWidget, Ui_Form):
-    style_selected = QtCore.pyqtSignal(str)  # Сигнал для передачи выбранного стиля
+    style_selected = QtCore.pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+        self.setWindowTitle("Стили")
 
         self.new_style_window = NewStyleWindow()
         self.new_style.clicked.connect(self.open_new_style_window)
@@ -676,17 +648,14 @@ class StyleWindow(QtWidgets.QWidget, Ui_Form):
         self.conn = sqlite3.connect('text_processor.db')
         self.cur = self.conn.cursor()
 
-        # Создаем контейнер для радиокнопок
         self.radio_container = QWidget()
         self.radio_layout = QVBoxLayout(self.radio_container)
         self.scrollArea.setWidget(self.radio_container)
 
-        # Инициализация ScrollArea
         self.scrollArea.setWidgetResizable(True)
         self.save.clicked.connect(self.save_style)
 
     def save_style(self):
-        # Получаем выбранный стиль
         selected_style = None
         for i in range(self.radio_layout.count()):
             radio_button = self.radio_layout.itemAt(i).widget()
@@ -695,28 +664,24 @@ class StyleWindow(QtWidgets.QWidget, Ui_Form):
                 break
 
         if selected_style:
-            # Отправляем сигнал с выбранным стилем
             self.style_selected.emit(selected_style)
-            self.close()  # Закрываем окно стилизации
+            self.close()
 
     def showEvent(self, event):
         self.update_scroll_area()
         super().showEvent(event)
 
     def update_scroll_area(self):
-        # Очистить существующие элементы в layout
         for i in reversed(range(self.radio_layout.count())):
             widget = self.radio_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
-        # Получаем новые данные из базы данных
         self.cur.execute("SELECT name FROM styles")
         styles = self.cur.fetchall()
 
-        # Добавляем радиокнопки в контейнер
         for style in styles:
-            radio_button = QRadioButton(style[0])  # Получаем имя стиля из кортежа
+            radio_button = QRadioButton(style[0])
             self.radio_layout.addWidget(radio_button)
 
     def open_new_style_window(self):
@@ -728,10 +693,11 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+        self.setWindowTitle("Создать новый стиль")
         self.bold_active = False
         self.italic_active = False
         self.underlined_active = False
-        self.current_text_color = QtGui.QColor('black')  # Изначальный цвет текста
+        self.current_text_color = QtGui.QColor('black')
         format = QtGui.QTextCharFormat()
         format.setForeground(self.current_text_color)
         self.merge_format_on_word_or_selection(format)
@@ -759,10 +725,8 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
     def on_text_changed(self):
         text = self.text_edit.toPlainText()
 
-        # Отключаем сигнал для предотвращения рекурсии
         self.text_edit.textChanged.disconnect(self.on_text_changed)
 
-        # Проверяем, является ли текст пустым
         if not text:
             self.update_font()
             self.update_line_spacing()
@@ -783,7 +747,6 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
 
         self.text_edit.textChanged.connect(self.on_text_changed)
 
-    # Новый метод для сохранения стиля
     def save_style(self):
         style_name = self.style_name.text()
         current_font = self.font.currentFont().family()
@@ -866,7 +829,7 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
     def change_text_color(self):
         color = QColorDialog.getColor()
         if color.isValid():
-            self.current_text_color = color  # Обновляем текущий цвет текста
+            self.current_text_color = color
             format = QtGui.QTextCharFormat()
             format.setForeground(color)
             self.merge_format_on_word_or_selection(format)
@@ -908,6 +871,7 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
                 print(e)
         else:
             self.show_message("Придумайте название стиля")
+
     def closing(self):
         self.text_edit.clear()
         self.style_name.clear()
@@ -929,6 +893,7 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
         self.font.setCurrentText("Academy Engraved LET")
         self.font_size.setCurrentText("8")
         self.close()
+
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
