@@ -623,7 +623,6 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
         self.setupUi(self)
         self.pushButton_replace.clicked.connect(self.replace_all)
 
-    # Метод, выполняющий замену всех найденных слов
     def replace_all(self):
         word_to_replace = self.lineEdit_search2.text()
         replacement_word = self.lineEdit_replace.text()
@@ -635,7 +634,7 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
         if self.checkBox_register.isChecked():
             flags = 0
         else:
-            flags = re.IGNORECASE  # Учитываем регистр иначе
+            flags = re.IGNORECASE
 
         whole_word = self.checkBox_entirely.isChecked()
         pattern = word_to_replace
@@ -646,10 +645,12 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
         new_text = re.sub(pattern, replacement_word, text, flags=flags)
         self.text_edit.setPlainText(new_text)
 
+        # Восстанавливаем поля страницы после замены текста
+        main_window.set_page_margins()
+
         self.show_message(f"Все вхождения '{word_to_replace}' заменены на '{replacement_word}'.")
         self.close()
 
-    # Метод для отображения сообщения в диалоговом окне
     def show_message(self, message):
         msg_box = QMessageBox()
         msg_box.setText(message)
@@ -660,7 +661,7 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
         self.lineEdit_search2.clear()
         self.checkBox_entirely.setChecked(False)
         self.checkBox_register.setChecked(False)
-        event.accept()  # Принять событие закрытия
+        event.accept()
 
 
 class StyleWindow(QtWidgets.QWidget, Ui_Form):
