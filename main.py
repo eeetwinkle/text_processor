@@ -201,16 +201,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
     def open_html_file(self):
         if not self.text_edit.document().isEmpty() and self.text_edit.document().isModified():
-            unsaved_warning_message = ("У вас есть несохраненные данные. Они будут утеряны при открытии нового файла."
-                                       " Продолжить?")
-            reply = QMessageBox.warning(
-                self,
-                "Предупреждение",
-                unsaved_warning_message,
-                QMessageBox.Ok
-            )
+            unsaved_warning_message = (
+                "У вас есть несохраненные данные. Они будут утеряны при открытии нового файла. Продолжить?")
+            message_box = QMessageBox()
+            message_box.setIcon(QMessageBox.Warning)
+            message_box.setWindowTitle("Предупреждение")
+            message_box.setText(unsaved_warning_message)
+            continue_button = message_box.addButton("Продолжить", QMessageBox.AcceptRole)
+            cancel_button = message_box.addButton("Отменить", QMessageBox.RejectRole)
+            message_box.setDefaultButton(cancel_button)
 
-            if reply == QMessageBox.Cancel:
+            message_box.exec_()
+
+            if message_box.clickedButton() == cancel_button:
                 return
 
         self.page_contents[self.current_page] = self.text_edit.toHtml()
