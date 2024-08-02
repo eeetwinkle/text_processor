@@ -522,18 +522,13 @@ class SearchWindow(QtWidgets.QWidget, Ui_QtSearchWindow):
         self.pushButton_search.clicked.connect(self.perform_search)
         self.pushButton_search_2.clicked.connect(self.navigate_to_next)
         self.pushButton_search_3.clicked.connect(self.navigate_to_previous)
+        self.found_positions = []
+        self.current_index = -1
 
     def perform_search(self):
         search_text = self.lineEdit_search.text()
-        if self.checkBox_register.isChecked():
-            flags = 0
-        else:
-            flags = re.IGNORECASE
-
-        whole_word = self.checkBox_entirely.isChecked()
-        pattern = search_text
-        if whole_word:
-            pattern = r'\b' + re.escape(search_text) + r'\b'
+        flags = re.IGNORECASE if not self.checkBox_register.isChecked() else 0
+        pattern = re.escape(search_text) if not self.checkBox_entirely.isChecked() else r'\b' + re.escape(search_text) + r'\b'
 
         text = self.text_edit.toPlainText()
         self.found_positions = [m.start() for m in re.finditer(pattern, text, flags)]
@@ -604,15 +599,8 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
             self.show_message("Пожалуйста, введите слово для замены.")
             return
 
-        if self.checkBox_register.isChecked():
-            flags = 0
-        else:
-            flags = re.IGNORECASE
-
-        whole_word = self.checkBox_entirely.isChecked()
-        pattern = word_to_replace
-        if whole_word:
-            pattern = r'\b' + re.escape(word_to_replace) + r'\b'
+        flags = re.IGNORECASE if not self.checkBox_register.isChecked() else 0
+        pattern = re.escape(word_to_replace) if not self.checkBox_entirely.isChecked() else r'\b' + re.escape(word_to_replace) + r'\b'
 
         text = self.text_edit.toPlainText()
         new_text = re.sub(pattern, replacement_word, text, flags=flags)
