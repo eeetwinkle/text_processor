@@ -55,6 +55,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
         self.pages.setMinimum(1)
         self.pages.setValue(1)
         self.ignore_modifications = False
+        self.indent_value = 0
+        self.previous_text = self.text_edit.toPlainText()
 
         self.update_font()
         self.update_font_size()
@@ -201,7 +203,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
         self.text_edit.textChanged.disconnect(self.on_text_changed)
 
-        if not text:
+        if not text or text != self.previous_text:
             self.update_font()
             self.update_line_spacing()
             self.update_font_size()
@@ -218,7 +220,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
             format = QtGui.QTextCharFormat()
             format.setForeground(self.current_text_color)
             self.merge_format_on_word_or_selection(format)
-
+            self.previous_text = text
         self.text_edit.textChanged.connect(self.on_text_changed)
 
     def apply_style(self, style_name):
