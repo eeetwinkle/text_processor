@@ -199,8 +199,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
                 QMessageBox.critical(self, "Ошибка загрузки", f"Произошла ошибка при загрузке HTML: {str(e)}")
 
     def on_text_changed(self):
-        text = self.text_edit.toPlainText()
+        if self.ignore_text_change:  # Проверяем флаг
+            return
 
+        text = self.text_edit.toPlainText()
         self.text_edit.textChanged.disconnect(self.on_text_changed)
 
         if not text or text != self.previous_text:
@@ -221,6 +223,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
             format.setForeground(self.current_text_color)
             self.merge_format_on_word_or_selection(format)
             self.previous_text = text
+
         self.text_edit.textChanged.connect(self.on_text_changed)
 
     def apply_style(self, style_name):
@@ -475,12 +478,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_color):
 
     def change_page(self):
         self.page_contents[self.current_page] = self.text_edit.toHtml()
-
         self.current_page = self.pages.value()
 
-        self.ignore_modifications = True
+        self.ignore_text_change = True  # Устанавливаем флаг
         self.load_page_content()
-        self.ignore_modifications = False
+        self.ignore_text_change = False  # Сбрасываем флаг
 
     def load_page_content(self):
         text = self.page_contents.get(self.current_page, "")
