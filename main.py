@@ -602,9 +602,29 @@ class ReplaceWindow(QtWidgets.QWidget, Ui_QtReplaceWindow):
         flags = re.IGNORECASE if not self.checkBox_register.isChecked() else 0
         pattern = re.escape(word_to_replace) if not self.checkBox_entirely.isChecked() else r'\b' + re.escape(word_to_replace) + r'\b'
 
-        text = self.text_edit.toPlainText()
-        new_text = re.sub(pattern, replacement_word, text, flags=flags)
-        self.text_edit.setPlainText(new_text)
+        cursor = self.text_edit.textCursor()
+        cursor.beginEditBlock()
+
+        regex = re.compile(pattern, flags)
+        pos = 0
+        while True:
+            match = regex.search(self.text_edit.toPlainText(), pos)
+            if not match:
+                break
+
+            start, end = match.span()
+            cursor.setPosition(start)
+            cursor.movePosition(QtGui.QTextCursor.Right, QtGui.QTextCursor.KeepAnchor, end - start)
+
+            current_format = cursor.charFormat()
+            cursor.insertText(replacement_word)
+            cursor.setPosition(start)
+            cursor.movePosition(QtGui.QTextCursor.Right, QtGui.QTextCursor.KeepAnchor, len(replacement_word))
+            cursor.mergeCharFormat(current_format)
+
+            pos = start + len(replacement_word)
+
+        cursor.endEditBlock()
 
         main_window.set_page_margins()
 
