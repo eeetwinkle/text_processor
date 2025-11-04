@@ -906,9 +906,126 @@ class NewStyleWindow(QtWidgets.QWidget, Ui_QtNewStyleWindow):
         self.font_size.setCurrentText("8")
         self.close()
 
+# вот это все написано чатом гпт реально
+
+import sys
+import time
+import threading
+import requests
+import webbrowser
+
+class PaymentWindow(QtWidgets.QMainWindow):
+    update_text = QtCore.pyqtSignal(str)
+
+    def __init__(self, amount):
+        super().__init__()
+        self.setWindowTitle("Оплата через YooKassa")
+        self.setFixedSize(440, 220)
+
+        self.label = QtWidgets.QLabel(f"Сейчас откроется окно оплаты.\nПожалуйста, оплатите подписку: {amount} ₽", self)
+        self.label.setAlignment(QtCore.Qt.AlignCenter)
+        self.setCentralWidget(self.label)
+
+        self.update_text.connect(self.label.setText)
+
+        self.payment_id = None
+        self.amount = amount
+
+        # Создаём платёж и запускаем проверку
+        threading.Thread(target=self.start_payment_flow, daemon=True).start()
+
+    def start_payment_flow(self):
+        """Создаёт платёж на сервере, открывает ссылку и запускает polling."""
+        try:
+            # 1) Создаём платёж на сервере
+            # ожидаем, что endpoint /paying/{amount} возвращает JSON:
+            # {"payment_url": "...", "payment_id": "..."}
+            resp = requests.get(f"http://localhost:8000/paying/{self.amount}", timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+
+            payment_url = data.get("payment_url")
+            payment_id = data.get("payment_id")
+
+            if not payment_url or not payment_id:
+                self.update_text.emit("Ошибка: сервер вернул некорректный ответ при создании платежа.")
+                return
+
+            self.payment_id = payment_id
+
+            # 2) Открываем confirmation URL в браузере
+            try:
+                webbrowser.open(payment_url)
+            except Exception as e:
+                self.update_text.emit(f"Ошибка при переходе в системный браузер:\n{e}")
+
+            # 3) Запускаем polling статуса (в этом же потоке)
+            self._poll_payment_status()
+
+        except requests.RequestException as e:
+            self.update_text.emit(f"Ошибка при создании платежа:\n{e}")
+        except Exception as e:
+            self.update_text.emit(f"Неизвестная ошибка:\n{e}")
+
+    def _poll_payment_status(self):
+        """Проверяет /payment_status/{payment_id} каждые 5 сек в течение 10 минут."""
+        if not self.payment_id:
+            return
+
+        interval = 5
+        timeout = 600  # 10 минут
+        start = time.time()
+
+        self.update_text.emit("Платёж создан. Ожидание подтверждения...")
+
+        while time.time() - start < timeout:
+            try:
+                resp = requests.get(f"http://localhost:8000/payment_status/{self.payment_id}", timeout=10)
+                # Ожидаем, что endpoint возвращает либо {"status": "..."} либо {"status": "...", "paid": true}
+                if resp.status_code == 200:
+                    js = resp.json()
+                    status = js.get("status")
+                    paid = js.get("paid")  # опционально, если сервер отдаёт булево
+
+                    # явная проверка статуса
+                    if status == "succeeded" or paid is True:
+                        self.update_text.emit("✅ Оплата прошла успешно!")
+                        return
+                    if status in ("canceled", "expired", "failed") or paid is False and status in (
+                    "canceled", "expired", "failed"):
+                        self.update_text.emit("❌ Платёж отменён или истёк.")
+                        return
+
+                    # иначе — ещё ждём
+                    self.update_text.emit(f"Ожидание оплаты... (статус: {status})")
+
+                elif resp.status_code == 404:
+                    self.update_text.emit("Платёж не найден на сервере.")
+                    return
+                else:
+                    # временная проблема - показываем краткое сообщение и продолжаем
+                    self.update_text.emit(f"Ожидание ответа... (код {resp.status_code})")
+
+            except requests.RequestException as e:
+                # сеть упала или сервер недоступен — показываем, но продолжаем попытки
+                self.update_text.emit(f"Ошибка связи с сервером, повтор через {interval}s...")
+            except Exception as e:
+                self.update_text.emit(f"Ошибка проверки платежа: {e}")
+                return
+
+            time.sleep(interval)
+
+        # время вышло
+        self.update_text.emit("⏰ Время ожидания оплаты истекло.")
+
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec_())
+    window = PaymentWindow(500)
+    window.show()
+    sys.exit(app.exec())
+
+    # main_window = MainWindow()
+    # main_window.show()
+    # sys.exit(app.exec_())
+
